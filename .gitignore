@@ -1,0 +1,19 @@
+# API Keys - 保护你的Key不被上传
+api_key.txt
+api_keys.txt
+.env
+*.key
+
+# Python缓存 - 垃圾文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# 编辑器配置 - 个人习惯，不用共享
+.vscode/
+.idea/
+*.swp
+*.swo

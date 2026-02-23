@@ -1,0 +1,9 @@
+紧急任务：文件夹大小写统一
+问题：工位电脑路径`D:\Projects\Synecdoche`，笔记本路径`D:\Projects\synecdoche`
+后果：Git会当成两个不同文件夹，push/pull时历史混乱，跨平台（Linux）直接爆炸
+执行步骤
+```powershell
+cd D:\Projects
+ren Synecdoche synecdoche
+cd synecdoche
+git status #判断输出
