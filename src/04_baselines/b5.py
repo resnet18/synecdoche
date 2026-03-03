@@ -9,7 +9,7 @@ import torch
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-DATA_DIR = PROJECT_ROOT / "data" / "processed"
+DATA_DIR = PROJECT_ROOT / "data" / "final"
 OUTPUT_DIR = PROJECT_ROOT / "results" / "b5"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
