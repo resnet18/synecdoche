@@ -33,7 +33,7 @@ EVALUATE_EVERY_EPOCH = True                              # 每个epoch评估验�
 # ====================================================
 
 # 路径配置
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 第3个父目录（从0开始计数）
 DATA_DIR = PROJECT_ROOT / "data" / "processed"
 OUTPUT_DIR = PROJECT_ROOT / "results" / "o2"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
