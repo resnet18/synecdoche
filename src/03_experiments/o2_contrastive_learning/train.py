@@ -75,6 +75,9 @@ def load_data():
     return train_df, val_df
 
 def train_simcse():
+    # 将全局参数复制为局部变量，避免在函数内修改全局变量
+    use_early_stopping = USE_EARLY_STOPPING   # 局部变量
+
     # 加载基础模型
     model = SentenceTransformer(MODEL_NAME)
     
@@ -105,12 +108,10 @@ def train_simcse():
     early_stopping = None
     if EVALUATE_EVERY_EPOCH:
         # 验证集上的损失评估器
-         # 使用自定义的 LossEvaluator，而不是从库导入
         evaluator = LossEvaluator(val_dataloader, loss_model=train_loss, name='val_loss')
-        # 每个epoch的步数（用于设置 evaluation_steps）
         steps_per_epoch = len(train_dataloader)
-        
-        if USE_EARLY_STOPPING:
+
+        if use_early_stopping:   # 使用局部变量
             # 检查 EarlyStopping 是否存在
             if hasattr(evaluation, 'EarlyStopping'):
                 early_stopping = evaluation.EarlyStopping(
@@ -121,7 +122,7 @@ def train_simcse():
                 print(f"早停已启用：耐心={EARLY_STOPPING_PATIENCE}，最小改善={EARLY_STOPPING_MIN_DELTA}")
             else:
                 print("警告：当前版本不支持 EarlyStopping，早停功能已禁用。")
-                USE_EARLY_STOPPING = False
+                use_early_stopping = False   # 修改局部变量，不影响全局
     else:
         steps_per_epoch = 0
     
