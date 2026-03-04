@@ -69,6 +69,9 @@ train_embs = model.encode(
 center = train_embs.mean(dim=0)
 print("中心向量计算完成")
 
+center_path = os.path.join(RESULTS_DIR, 'center_vector.npy')
+np.save(center_path, center.cpu().numpy())  # 如果是GPU tensor需要先转CPU
+print(f"中心向量已保存至: {center_path}")
 # 5. 测试集推理
 print("预测测试集...")
 scores = []

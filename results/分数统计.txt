@@ -5,8 +5,8 @@ B1 min=0.00, max=47.00, mean=0.67
 B2 min=0.00, max=94.92, mean=83.70
 B3 min=0.00, max=77.66, mean=17.86
 B4 min=72.96, max=99.28, mean=93.99
-B5
-B6
+B5 min=76.23, max=94.79, mean=87.79
+B6 
 B7
 B8
 B9
