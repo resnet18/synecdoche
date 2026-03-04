@@ -201,12 +201,12 @@ results = pd.DataFrame({
 })
 results.to_csv(OUTPUT_PATH, index=False, encoding='utf-8-sig')
 
-print(f"\n✓ 结果保存至: {OUTPUT_PATH}")
+print(f"\n 结果保存至: {OUTPUT_PATH}")
 print(f"实际使用参考句数: {num_examples}（因OOM可能降级）")
 print(f"分数统计: min={min(scores):.2f}, max={max(scores):.2f}, mean={sum(scores)/len(scores):.2f}")
 
 if num_examples < 15:
-    print(f"\n⚠️  注意：因显存限制已降级至 {num_examples} 句参考（原始计划15句）")
+    print(f"\n 注意：因显存限制已降级至 {num_examples} 句参考（原始计划15句）")
     print(f"    如需复现，请确保其他方法使用相同数量的参考句进行对比")
 
 print("=== B8 完成 ===")
