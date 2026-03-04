@@ -6,8 +6,9 @@ O2: SimCSE 对比学习 + 早停
 
 import torch
 from sentence_transformers import SentenceTransformer, InputExample, losses
-from sentence_transformers.evaluation import LossEvaluator
 from sentence_transformers import evaluation  # 用于 EarlyStopping
+from sentence_transformers.evaluation import SentenceEvaluator   # 新增导入
+import logging  # 新增导入
 from torch.utils.data import DataLoader
 import pandas as pd
 import numpy as np
@@ -36,6 +37,36 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data" / "processed"
 OUTPUT_DIR = PROJECT_ROOT / "results" / "o2"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+# ==================== 自定义 LossEvaluator 类（新增） ====================
+class LossEvaluator(SentenceEvaluator):
+    """自定义评估器，用于在验证集上计算 MultipleNegativesRankingLoss"""
+    def __init__(self, dataloader, loss_model, name=""):
+        self.dataloader = dataloader
+        self.loss_model = loss_model
+        self.name = name
+        self.best_loss = float('inf')
+
+    def __call__(self, model, output_path=None, epoch=-1, steps=-1):
+        model.eval()
+        total_loss = 0
+        num_batches = 0
+
+        with torch.no_grad():
+            for batch in self.dataloader:
+                # 将 InputExample 列表转换为模型输入格式
+                features, labels = model.smart_batching_collate(batch)
+                # 将特征移到模型所在设备
+                features = [f.to(model.device) for f in features]
+                # 计算损失（labels 也会自动处理）
+                loss_value = self.loss_model(features, labels=labels)
+                total_loss += loss_value.item()
+                num_batches += 1
+
+        avg_loss = total_loss / num_batches
+        logging.info(f"Evaluation on {self.name} dataset (epoch {epoch}, steps {steps}): loss = {avg_loss:.6f}")
+        return avg_loss
+# =========================================================================
 
 def load_data():
     """加载训练集和验证集"""
@@ -74,19 +105,25 @@ def train_simcse():
     early_stopping = None
     if EVALUATE_EVERY_EPOCH:
         # 验证集上的损失评估器
+         # 使用自定义的 LossEvaluator，而不是从库导入
         evaluator = LossEvaluator(val_dataloader, loss_model=train_loss, name='val_loss')
         # 每个epoch的步数（用于设置 evaluation_steps）
         steps_per_epoch = len(train_dataloader)
         
         if USE_EARLY_STOPPING:
-            early_stopping = evaluation.EarlyStopping(
-                evaluator=evaluator,
-                patience=EARLY_STOPPING_PATIENCE,
-                min_delta=EARLY_STOPPING_MIN_DELTA
-            )
-            print(f"早停已启用：耐心={EARLY_STOPPING_PATIENCE}，最小改善={EARLY_STOPPING_MIN_DELTA}")
+            # 检查 EarlyStopping 是否存在
+            if hasattr(evaluation, 'EarlyStopping'):
+                early_stopping = evaluation.EarlyStopping(
+                    evaluator=evaluator,
+                    patience=EARLY_STOPPING_PATIENCE,
+                    min_delta=EARLY_STOPPING_MIN_DELTA
+                )
+                print(f"早停已启用：耐心={EARLY_STOPPING_PATIENCE}，最小改善={EARLY_STOPPING_MIN_DELTA}")
+            else:
+                print("警告：当前版本不支持 EarlyStopping，早停功能已禁用。")
+                USE_EARLY_STOPPING = False
     else:
-        steps_per_epoch = 0  # 不评估
+        steps_per_epoch = 0
     
     print("开始训练 O2 (SimCSE)...")
     print(f"训练集样本数: {len(train_examples)}")
