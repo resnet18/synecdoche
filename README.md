@@ -59,11 +59,11 @@ B4：word2vec（有神经网络，但CPU能跑）
 
 B5：预训练编码器零样本（MiniLM）
 
-B6：普通编码器对比学习（如RoBERTa）
+B6：更大一点的编码器对比学习（如RoBERTa）
 
-B7：小型LLM少样本学习（Qwen3B）
+B7：小型LLM（Qwen3B）
 
-B8：更大一点的LLM少样本学习（Qwen7B）
+B8：更大一点的LLM（Qwen7B）
 
 B9：云端API（DeepSeek）
 
