@@ -31,10 +31,10 @@ print("=== B7: Qwen3-4B (Zero-shot with FIXED reference) ===")
 
 # ========== 验证文件存在 ==========
 if not os.path.exists(REFERENCE_PATH):
-    raise FileNotFoundError(f"❌ 参考文件不存在: {REFERENCE_PATH}\n"
+    raise FileNotFoundError(f"参考文件不存在: {REFERENCE_PATH}\n"
                            f"请确保 data/final/reference.csv 存在且包含 {NUM_EXAMPLES} 句参考文本")
 if not os.path.exists(TEST_PATH):
-    raise FileNotFoundError(f"❌ 测试文件不存在: {TEST_PATH}")
+    raise FileNotFoundError(f"测试文件不存在: {TEST_PATH}")
 
 # ========== 加载模型（INT4） ==========
 print(f"加载模型: {MODEL_NAME} (INT4)...")
