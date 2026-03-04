@@ -5,7 +5,7 @@ import os
 # === 配置区 ===
 RANDOM_SEED = 325 #已完成今日325大学习
 TEST_SIZE = 70
-FEW_SHOT_SIZE = 15
+ZERO_SHOT_SIZE = 15
 LONG_THRESHOLD = 35
 
 # === 路径配置 ===
@@ -45,19 +45,19 @@ val['label'] = 1
 train['source'] = 'logos'
 val['source'] = 'logos'
 
-# 4. 生成B5/B6的Few-shot示例（从训练集抽，无排序，无标注）
+# 4. 生成B6/B7的参考示例（从训练集抽，无排序，无标注）
 train_long = train[train['is_long'] == True]
 train_short = train[train['is_long'] == False]
 train_medium = train[(train['length'] > 20) & (train['length'] <= LONG_THRESHOLD)]
 
-n_per_layer = (FEW_SHOT_SIZE // 3) + 1
-few_shot_samples = []
+n_per_layer = (ZERO_SHOT_SIZE // 3) + 1
+zero_shot_samples = []
 for layer_df in [train_short, train_medium, train_long]:
     if len(layer_df) > 0:
-        few_shot_samples.append(layer_df.sample(n=min(n_per_layer, len(layer_df)), random_state=RANDOM_SEED))
+        zero_shot_samples.append(layer_df.sample(n=min(n_per_layer, len(layer_df)), random_state=RANDOM_SEED))
 
-few_shot = pd.concat(few_shot_samples).sample(frac=1, random_state=RANDOM_SEED).head(FEW_SHOT_SIZE)
-few_shot_clean = few_shot[['id', 'text']].reset_index(drop=True)
+zero_shot = pd.concat(zero_shot_samples).sample(frac=1, random_state=RANDOM_SEED).head(ZERO_SHOT_SIZE)
+zero_shot_clean = zero_shot[['id', 'text']].reset_index(drop=True)
 
 # 5. 测试集负例占位符
 max_id = df['id'].max() if 'id' in df.columns else 0 # 在构建 negative_template 前获取最大 id（可选）
@@ -78,7 +78,7 @@ train.to_csv(os.path.join(FINAL_DIR, 'train.csv'), index=False, encoding='utf-8-
 val.to_csv(os.path.join(FINAL_DIR, 'validation.csv'), index=False, encoding='utf-8-sig')
 test_full.to_csv(os.path.join(TEST_DIR, 'test.csv'), index=False, encoding='utf-8-sig')
 test_positive.to_csv(os.path.join(TEST_DIR, 'test_positive.csv'), index=False, encoding='utf-8-sig')
-few_shot_clean.to_csv(os.path.join(FINAL_DIR, 'few_shot_examples.csv'), index=False, encoding='utf-8-sig')
+zero_shot_clean.to_csv(os.path.join(FINAL_DIR, 'reference.csv'), index=False, encoding='utf-8-sig')
 negative_template.to_csv(os.path.join(TEST_DIR, 'test_negative_template.csv'), index=False, encoding='utf-8-sig')
 
-print(f"已完成划分，训练集：{len(train)}， 验证集：{len(val)}，测试集正例: {len(test_positive)}，Few-Shot示例：{len(few_shot_clean)}")
+print(f"已完成划分，训练集：{len(train)}， 验证集：{len(val)}，测试集正例: {len(test_positive)}，B6/B7示例：{len(zero_shot_clean)}")

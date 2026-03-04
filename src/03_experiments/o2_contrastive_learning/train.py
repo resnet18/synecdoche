@@ -16,13 +16,13 @@ OUTPUT_DIR = PROJECT_ROOT / "results" / "o2"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 def load_data():
-    """加载 processed/train.csv 和 val.csv"""
+    """加载训练集和验证集"""
     train_df = pd.read_csv(DATA_DIR / "train.csv")
-    val_df = pd.read_csv(DATA_DIR / "val.csv")
+    val_df = pd.read_csv(DATA_DIR / "validation.csv")
     return train_df, val_df
 
 def train_simcse():
-    # 加载基础模型 (22M参数，轻松装入16G显存)
+    # 加载基础模型 (22M参数，16G显存随便放)
     model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
     
     # 检查GPU
