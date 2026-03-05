@@ -17,3 +17,10 @@ __pycache__/
 .idea/
 *.swp
 *.swo
+
+# 模型权重（太大，绝对不能上传）
+models/
+*.safetensors
+*.bin
+*.pt
+*.pth

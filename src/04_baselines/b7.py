@@ -1,25 +1,22 @@
 """
-B7: Qwen3-4B (INT4)
-策略：读取固定15句参考文本（reference.csv）→ 归纳风格 → 打分
-修正：移除随机抽样，强制使用 reference.csv 保证实验可复现
+B7: Qwen3-4B (INT4) - 主实验脚本
+策略：读取固定15句参考文本 → 归纳风格 → 打分
 """
+
 import sys
 import os
-# 关键：强制使用国内镜像（hf-mirror.com），不走官方 Hugging Face
-os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
-os.environ["HF_HUB_OFFLINE"] = "1"  # 确保能联网下载（下载完后再改成1）
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, BASE_DIR)  # 确保能找到utils
 
-from src.utils.model_loader import load_qwen_model  # 使用封装好的加载器
-from transformers import BitsAndBytesConfig  # 如果还需要其他配置
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, BASE_DIR)
+
+from src.utils.model_loader import load_qwen_model
 import torch
 import pandas as pd
-import numpy as np
 import re
 
 # ========== 配置 ==========
-MODEL_NAME = "Qwen/Qwen3-4B"
+# 使用 repo_id，支持自动下载到 models/Qwen--Qwen3-4B/
+MODEL_NAME = "Qwen/Qwen3-4B"  # 会自动下载到项目目录
 NUM_EXAMPLES = 15
 MAX_LENGTH = 2048
 
@@ -33,20 +30,19 @@ OUTPUT_PATH = os.path.join(RESULTS_DIR, 'predictions.csv')
 
 print("=== B7: Qwen3-4B (Zero-shot with FIXED reference) ===")
 
-# ========== 加载模型（自动处理在线/离线） ==========
+# ========== 加载模型 ==========
 print(f"加载模型: {MODEL_NAME}...")
-model, tokenizer = load_qwen_model(MODEL_NAME, num_bits=4)
+# auto_download=True 会自动从 ModelScope 下载到 models/Qwen--Qwen3-4B/
+model, tokenizer = load_qwen_model(MODEL_NAME, num_bits=4, auto_download=True)
 print("✓ 模型加载完成")
 
-# ========== 后续代码和你之前的一致 ==========
-# 文件检查
+# ========== 加载数据 ==========
 if not os.path.exists(REFERENCE_PATH):
-    raise FileNotFoundError(f"❌ 参考文件不存在: {REFERENCE_PATH}")
+    raise FileNotFoundError(f"参考文件不存在: {REFERENCE_PATH}")
 
-# 加载数据（固定reference）
 ref_df = pd.read_csv(REFERENCE_PATH)
 if len(ref_df) < NUM_EXAMPLES:
-    raise ValueError(f"❌ reference.csv 只有 {len(ref_df)} 行，需要至少 {NUM_EXAMPLES} 行")
+    raise ValueError(f"reference.csv 只有 {len(ref_df)} 行，需要至少 {NUM_EXAMPLES} 行")
 
 reference_texts = ref_df['text'].head(NUM_EXAMPLES).tolist()
 print(f"✓ 从 reference.csv 加载 {len(reference_texts)} 句固定参考文本")
@@ -54,7 +50,7 @@ print(f"✓ 从 reference.csv 加载 {len(reference_texts)} 句固定参考文�
 test_df = pd.read_csv(TEST_PATH)
 print(f"✓ 测试集: {len(test_df)} 句")
 
-# Prompt构建
+# ========== Prompt构建（Qwen3无强制思考，简洁有效） ==========
 def build_prompt(reference_texts, test_text):
     ref_block = "\n".join([f"{i+1}. {t}" for i, t in enumerate(reference_texts)])
     return f"""以下是一个游戏角色的台词示例文本（共{len(reference_texts)}句）：
@@ -64,7 +60,7 @@ def build_prompt(reference_texts, test_text):
 文本：{test_text}
 分数："""
 
-# 推理
+# ========== 推理 ==========
 print("开始推理...")
 scores = []
 raw_outputs = []
@@ -87,7 +83,7 @@ for idx, row in test_df.iterrows():
     
     response = tokenizer.decode(outputs[0][inputs['input_ids'].shape[1]:], skip_special_tokens=True).strip()
     
-    # 解析数字
+    # 解析数字（Qwen3输出干净，直接解析）
     score = 50.0
     try:
         numbers = re.findall(r'\d+\.?\d*', response)
@@ -105,7 +101,7 @@ for idx, row in test_df.iterrows():
     if (idx + 1) % 10 == 0:
         print(f"  进度: {idx + 1}/{len(test_df)}")
 
-# 保存
+# ========== 保存结果 ==========
 pd.DataFrame({
     'text': test_df['text'],
     'b7_score': scores,

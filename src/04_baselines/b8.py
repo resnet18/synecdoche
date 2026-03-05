@@ -1,12 +1,11 @@
 """
-B8: Qwen3-7B (INT4) - 主实验脚本
+B8: Qwen3-8B (INT4) - 主实验脚本
 策略：固定参考文本 → 尝试15句推理 → OOM则降级5句 → 再OOM则纯Zero-shot
 """
+
 import sys
 import os
-# 关键：强制使用国内镜像（hf-mirror.com），不走官方 Hugging Face
-os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
-os.environ["HF_HUB_OFFLINE"] = "0"  # 确保能联网下载（下载完后再改成1）
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, BASE_DIR)
 
@@ -16,7 +15,7 @@ import pandas as pd
 import re
 
 # ========== 配置 ==========
-MODEL_NAME = "Qwen/Qwen3-7B"
+MODEL_NAME = "Qwen/Qwen3-8B"  # 8B（科班推荐，16G显存临界，支持OOM降级）
 MAX_LENGTH = 2048
 TARGET_EXAMPLES = 15  # 目标参考句数（可能因OOM降级）
 
@@ -28,26 +27,27 @@ REFERENCE_PATH = os.path.join(BASE_DIR, 'data', 'final', 'reference.csv')
 TEST_PATH = os.path.join(BASE_DIR, 'data', 'test', 'test_positive.csv')
 OUTPUT_PATH = os.path.join(RESULTS_DIR, 'predictions.csv')
 
-print("=== B8: Qwen3-7B (主实验 / 支持OOM降级) ===")
+print("=== B8: Qwen3-8B (主实验 / 支持OOM降级) ===")
 
-# ========== 加载模型（自动处理在线/离线） ==========
+# ========== 加载模型（支持自动下载到项目目录） ==========
 print(f"加载模型: {MODEL_NAME}...")
 try:
-    model, tokenizer = load_qwen_model(MODEL_NAME, num_bits=4)
+    # auto_download=True 会自动从 ModelScope 下载到 models/Qwen--Qwen3-8B/
+    model, tokenizer = load_qwen_model(MODEL_NAME, num_bits=4, auto_download=True)
     print("✓ 模型加载完成")
 except Exception as e:
-    print(f"❌ 模型加载失败: {e}")
+    print(f"模型加载失败: {e}")
     exit()
 
 # ========== 加载数据（固定reference） ==========
 if not os.path.exists(REFERENCE_PATH):
-    raise FileNotFoundError(f"❌ 参考文件不存在: {REFERENCE_PATH}")
+    raise FileNotFoundError(f"参考文件不存在: {REFERENCE_PATH}")
 if not os.path.exists(TEST_PATH):
-    raise FileNotFoundError(f"❌ 测试文件不存在: {TEST_PATH}")
+    raise FileNotFoundError(f"测试文件不存在: {TEST_PATH}")
 
 ref_df = pd.read_csv(REFERENCE_PATH)
 if len(ref_df) < 1:
-    raise ValueError("❌ reference.csv 为空")
+    raise ValueError("reference.csv 为空")
 
 test_df = pd.read_csv(TEST_PATH)
 print(f"✓ 测试集: {len(test_df)} 句")
@@ -95,11 +95,12 @@ def run_with_examples(num_examples):
                     temperature=0.1,
                     do_sample=False,
                     pad_token_id=tokenizer.eos_token_id
+                    # 注意：Qwen3无强制思考模式，不需要 enable_thinking=False
                 )
             
             response = tokenizer.decode(outputs[0][inputs['input_ids'].shape[1]:], skip_special_tokens=True).strip()
             
-            # 解析分数
+            # 解析分数（Qwen3输出干净，直接解析）
             score = 50.0
             try:
                 numbers = re.findall(r'\d+\.?\d*', response)
@@ -144,11 +145,11 @@ for strategy in strategies:
         print(f"✓ {strategy} 句模式成功")
         break
     else:
-        print(f"⚠️  {strategy} 句OOM，清理显存并降级...")
+        print(f"{strategy} 句OOM，清理显存并降级...")
         continue
 
 if final_scores is None:
-    print("❌ 所有模式均失败（包括纯Zero-shot）")
+    print("所有模式均失败（包括纯Zero-shot）")
     exit()
 
 # ========== 保存结果 ==========
@@ -165,7 +166,7 @@ print(f"实际使用参考句数: {final_num}（目标{TARGET_EXAMPLES}，因OOM
 print(f"分数统计: min={min(final_scores):.2f}, max={max(final_scores):.2f}, mean={sum(final_scores)/len(final_scores):.2f}")
 
 if final_num < TARGET_EXAMPLES:
-    print(f"\n⚠️  显存限制警告：已从{TARGET_EXAMPLES}句降级至{final_num}句")
+    print(f"\n显存限制警告：已从{TARGET_EXAMPLES}句降级至{final_num}句")
     print(f"    这会削弱风格建模能力，但保证了物理可执行性")
 
 print("=== B8 完成 ===")

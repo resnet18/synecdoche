@@ -2,21 +2,28 @@
 B8 Ablation: 原始文本 vs 脱敏文本一致性检验
 关键：参考文本固定（reference.csv），根据显存决定15/5/0句，仅测试文本变化
 """
+import os
+import sys
+from pathlib import Path
+
+# 关键：向上3层到项目根（因为b8a.py在src/05_evaluation/ablation/）
+BASE_DIR = str(Path(__file__).resolve().parents[3])
+sys.path.insert(0, BASE_DIR)
+
+from src.utils.model_loader import load_qwen_model  # 添加这行
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 import torch
 import pandas as pd
 import numpy as np
-import os
 import re
 from scipy.stats import spearmanr
 from datetime import datetime
 
 # ========== 配置（与b8.py一致）==========
-MODEL_NAME = "Qwen/Qwen3-7B"
+MODEL_NAME = "Qwen/Qwen3-8B"
 MAX_LENGTH = 2048
 
 # ========== 路径 ==========
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 RESULTS_DIR = os.path.join(BASE_DIR, 'results', 'b8')
 ABLATION_DIR = os.path.join(BASE_DIR, 'results', 'ablation')
 os.makedirs(ABLATION_DIR, exist_ok=True)
@@ -31,51 +38,37 @@ print("原则：参考文本固定（根据显存15/5/0句），仅测试文本�
 
 # 前置检查
 if not os.path.exists(REFERENCE_PATH):
-    raise FileNotFoundError(f"❌ 参考文件不存在: {REFERENCE_PATH}")
+    raise FileNotFoundError(f"参考文件不存在: {REFERENCE_PATH}")
 if not os.path.exists(TEST_ORIG_PATH):
-    raise FileNotFoundError(f"❌ 原始测试文件不存在: {TEST_ORIG_PATH}")
+    raise FileNotFoundError(f"原始测试文件不存在: {TEST_ORIG_PATH}")
 if not os.path.exists(DES_PATH):
-    raise FileNotFoundError(f"❌ 脱敏结果不存在: {DES_PATH}\n请先运行 b8.py（使用脱敏test.csv）")
+    raise FileNotFoundError(f"脱敏结果不存在: {DES_PATH}\n请先运行 b8.py（使用脱敏test.csv）")
 
 def load_model_and_determine_capacity():
-    """与b8.py完全一致的OOM降级逻辑"""
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.float16,
-        bnb_4bit_use_double_quant=True
-    )
+    """加载模型（使用统一加载器，带OOM降级）"""
+    strategies = [15, 5, 0]  # 尝试15句，OOM则降级
     
-    tokenizer = None
-    model = None
-    strategies = [15, 5, 0]
-    
-    for strategy in strategies:
+    for num_ex in strategies:
         try:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
                 torch.cuda.synchronize()
             
-            print(f"尝试加载7B模型 ({strategy}句参考)...")
-            tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
-            model = AutoModelForCausalLM.from_pretrained(
-                MODEL_NAME,
-                quantization_config=bnb_config,
-                device_map="auto",
-                trust_remote_code=True
-            )
-            print(f"✓ {strategy}句模式加载成功")
-            return model, tokenizer, strategy
+            print(f"尝试加载8B模型 (策略: {num_ex}句参考)...")
+            # 使用统一加载器（会自动下载到 models/Qwen--Qwen3-8B/）
+            model, tokenizer = load_qwen_model(MODEL_NAME, num_bits=4, auto_download=True)
+            print(f"✓ 模型加载成功，使用 {num_ex} 句参考")
+            return model, tokenizer, num_ex
             
         except RuntimeError as e:
             if "out of memory" in str(e).lower() or "cuda" in str(e).lower():
-                print(f"⚠️  {strategy}句OOM，清理显存...")
+                print(f"OOM，清理显存并降级...")
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
                 continue
             raise e
     
-    raise RuntimeError("❌ 所有加载策略均失败（15/5/0句均OOM）")
+    raise RuntimeError("所有加载策略均失败（8B模型无法加载）")
 
 def build_prompt(reference_texts, test_text):
     """与b8.py一致"""
@@ -102,7 +95,7 @@ print(f"最终配置: {num_examples}句参考文本\n")
 # 读取固定参考文本（根据OOM降级结果取前N句）
 ref_df = pd.read_csv(REFERENCE_PATH)
 if len(ref_df) < num_examples and num_examples > 0:
-    raise ValueError(f"❌ reference.csv 只有 {len(ref_df)} 行，需要至少 {num_examples} 行")
+    raise ValueError(f"reference.csv 只有 {len(ref_df)} 行，需要至少 {num_examples} 行")
 
 if num_examples > 0:
     reference_texts = ref_df['text'].head(num_examples).tolist()
@@ -175,13 +168,13 @@ scores_des = df_des['b8_score'].values
 # 检查配置一致性
 des_num_examples = df_des['num_examples'].iloc[0] if 'num_examples' in df_des.columns else "未知"
 if str(des_num_examples) != str(num_examples):
-    print(f"\n⚠️  警告：主实验与消融实验配置不一致！")
+    print(f"\n  警告：主实验与消融实验配置不一致！")
     print(f"    主实验（脱敏）使用: {des_num_examples} 句")
     print(f"    消融实验（原始）使用: {num_examples} 句")
     print(f"    这可能会影响Spearman结果的解释")
 
 if len(scores_des) != len(scores_orig):
-    raise ValueError(f"❌ 样本数不匹配: 原始{len(scores_orig)} vs 脱敏{len(scores_des)}")
+    raise ValueError(f" 样本数不匹配: 原始{len(scores_orig)} vs 脱敏{len(scores_des)}")
 
 # 计算Spearman
 rho, p = spearmanr(scores_orig, scores_des)
@@ -211,7 +204,7 @@ try:
     print(f"\n已更新汇总表:")
     print(df_summary.to_string(index=False))
 except Exception as e:
-    print(f"⚠️  无法更新汇总表: {e}")
+    print(f"无法更新汇总表: {e}")
 
 # 诊断
 print("\n诊断:")
@@ -226,4 +219,4 @@ if num_examples < 15:
     print(f"\n注意：因显存限制仅使用 {num_examples} 句参考，"
           f"这可能降低风格建模能力，导致ρ偏高（词汇线索减少）")
 
-print("=== B8 Ablation 完成 ===")
+print("=== B8输入消融 完成 ===")

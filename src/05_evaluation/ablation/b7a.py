@@ -10,9 +10,10 @@ from pathlib import Path
 BASE_DIR = str(Path(__file__).resolve().parents[3])
 # 或者：BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 sys.path.insert(0, BASE_DIR)
+from src.utils.model_loader import load_qwen_model
 
 # 关键修正2：强制离线，避免Qwen tokenizer联网查询
-os.environ["HF_HUB_OFFLINE"] = "1"
+# os.environ["HF_HUB_OFFLINE"] = "1"
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 import torch
@@ -39,40 +40,21 @@ print(f"项目根目录: {BASE_DIR}")
 
 # 文件校验
 if not os.path.exists(REFERENCE_PATH):
-    raise FileNotFoundError(f"❌ 参考文件不存在: {REFERENCE_PATH}")
+    raise FileNotFoundError(f"参考文件不存在: {REFERENCE_PATH}")
 if not os.path.exists(TEST_ORIG_PATH):
-    raise FileNotFoundError(f"❌ 原始测试文件不存在: {TEST_ORIG_PATH}")
+    raise FileNotFoundError(f"原始测试文件不存在: {TEST_ORIG_PATH}")
 if not os.path.exists(DES_PATH):
-    raise FileNotFoundError(f"❌ 脱敏结果不存在: {DES_PATH}\n请先运行 b7.py 生成脱敏版本预测")
+    raise FileNotFoundError(f"脱敏结果不存在: {DES_PATH}\n请先运行 b7.py 生成脱敏版本预测")
 
-# ========== 加载模型（强制本地，不联网） ==========
-print(f"加载模型: {MODEL_NAME} (INT4, 离线模式)...")
-bnb_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_quant_type="nf4",
-    bnb_4bit_compute_dtype=torch.float16,
-    bnb_4bit_use_double_quant=True
-)
-
-# 关键修正3：强制本地加载，阻止SSL查询
-tokenizer = AutoTokenizer.from_pretrained(
-    MODEL_NAME, 
-    trust_remote_code=True,
-    local_files_only=True
-)
-model = AutoModelForCausalLM.from_pretrained(
-    MODEL_NAME,
-    quantization_config=bnb_config,
-    device_map="auto",
-    trust_remote_code=True,
-    local_files_only=True
-)
-print("✓ 模型加载完成（本地缓存）")
+# ========== 加载模型 ==========
+print(f"加载模型: {MODEL_NAME} (INT4)...")
+model, tokenizer = load_qwen_model(MODEL_NAME, num_bits=4, auto_download=True)
+print("✓ 模型加载完成")
 
 # ========== 加载数据（固定reference） ==========
 ref_df = pd.read_csv(REFERENCE_PATH)
 if len(ref_df) < NUM_EXAMPLES:
-    raise ValueError(f"❌ reference.csv 只有 {len(ref_df)} 行，需要至少 {NUM_EXAMPLES} 行")
+    raise ValueError(f"reference.csv 只有 {len(ref_df)} 行，需要至少 {NUM_EXAMPLES} 行")
 
 reference_texts = ref_df['text'].head(NUM_EXAMPLES).tolist()
 print(f"✓ 固定参考文本: {len(reference_texts)} 句")
@@ -145,7 +127,7 @@ df_des = pd.read_csv(DES_PATH)
 scores_des = df_des['b7_score'].values
 
 if len(scores_des) != len(scores_orig):
-    raise ValueError(f"❌ 样本数不匹配: 原始{len(scores_orig)} vs 脱敏{len(scores_des)}")
+    raise ValueError(f"样本数不匹配: 原始{len(scores_orig)} vs 脱敏{len(scores_des)}")
 
 rho, p = spearmanr(scores_orig, scores_des)
 print(f"\n一致性检验结果: Spearman ρ = {rho:.4f} (p={p:.4f})")
@@ -165,15 +147,15 @@ try:
     df_summary.to_csv(summary_path, index=False, encoding='utf-8-sig')
     print(f"\n已更新汇总表:\n{df_summary.to_string(index=False)}")
 except Exception as e:
-    print(f"⚠️  无法更新汇总表: {e}")
+    print(f"无法更新汇总表: {e}")
 
 # 诊断
 print("\n诊断:")
 if rho > 0.8:
     print("✓ 强一致 (ρ>0.8): B7对内容脱敏鲁棒")
 elif rho > 0.5:
-    print("⚠ 中等一致 (0.5<ρ<0.8): 部分依赖词汇特征")
+    print("中等一致 (0.5<ρ<0.8): 部分依赖词汇特征")
 else:
     print("✗ 弱一致 (ρ<0.5): 严重依赖专有名词")
 
-print("=== B7 Ablation 完成 ===")
+print("=== B7 输入消融 完成 ===")

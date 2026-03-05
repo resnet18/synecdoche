@@ -3,26 +3,63 @@ import os
 import socket
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from pathlib import Path
 
 def is_huggingface_reachable():
-    """检查能否连上 Hugging Face（2秒超时）"""
     try:
         socket.create_connection(("huggingface.co", 443), timeout=2)
         return True
     except OSError:
         return False
 
-def load_qwen_model(model_name, num_bits=4):
+def download_via_modelscope(repo_id, cache_dir):
+    """使用 ModelScope 下载模型"""
+    try:
+        from modelscope import snapshot_download
+        print(f"从 ModelScope 下载: {repo_id}")
+        print(f"   目标目录: {cache_dir}")
+        # 新版 modelscope 不需要 resume_download 参数，自动支持断点续传
+        local_path = snapshot_download(repo_id, local_dir=cache_dir)
+        print(f"✓ 下载完成: {local_path}")
+        return local_path
+    except ImportError:
+        raise ImportError("请安装 modelscope: pip install modelscope")
+    except Exception as e:
+        raise RuntimeError(f"ModelScope 下载失败: {e}\n请手动下载后放入 {cache_dir}")
+
+def load_qwen_model(model_name_or_path, num_bits=4, auto_download=True):
     """
-    智能加载Qwen模型：能连网就正常加载，连不上就强制本地
-    解决Qwen tokenizer强制联网查询Mistral元数据的问题
+    加载 Qwen 模型
     """
-    offline_mode = not is_huggingface_reachable()
+    local_path = None
+    is_local = False
+    base_dir = Path(__file__).resolve().parent.parent.parent
     
-    if offline_mode:
-        print("网络不可达，强制使用本地缓存模式")
-        os.environ["HF_HUB_OFFLINE"] = "1"
+    # 1. 本地路径检查（包含 / 或 \ 且存在）
+    if ('/' in model_name_or_path or '\\' in model_name_or_path) and Path(model_name_or_path).exists():
+        local_path = model_name_or_path
+        is_local = True
+        print(f"本地路径: {local_path}")
     
+    # 2. 统一下载到项目目录 models/
+    else:
+        model_name_safe = model_name_or_path.replace('/', '--')
+        cache_dir = base_dir / "models" / model_name_safe
+        
+        if cache_dir.exists() and any(cache_dir.glob("*.safetensors")):
+            # 已下载过
+            local_path = str(cache_dir)
+            is_local = True
+            print(f"使用已下载模型: {local_path}")
+        elif auto_download:
+            # 需要下载
+            print(f"准备下载到: {cache_dir}")
+            local_path = download_via_modelscope(model_name_or_path, str(cache_dir))
+            is_local = True
+        else:
+            raise RuntimeError(f"模型未找到且 auto_download=False: {model_name_or_path}")
+    
+    # INT4 配置
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=(num_bits == 4),
         bnb_4bit_quant_type="nf4",
@@ -30,19 +67,24 @@ def load_qwen_model(model_name, num_bits=4):
         bnb_4bit_use_double_quant=True
     ) if num_bits == 4 else None
     
-    # 关键：根据网络状况自动选择 local_files_only
+
+    
+    # 加载（强制本地，不联网）
+    print(f"正在加载 tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(
-        model_name,
+        local_path,
         trust_remote_code=True,
-        local_files_only=offline_mode
+        local_files_only=True  # 关键：强制本地
     )
     
+    print(f"正在加载模型（INT4={num_bits==4}）...")
     model = AutoModelForCausalLM.from_pretrained(
-        model_name,
+        local_path,
         quantization_config=bnb_config,
         device_map="auto",
         trust_remote_code=True,
-        local_files_only=offline_mode
+        local_files_only=True  # 关键：强制本地
     )
     
+    print("✓ 模型加载完成")
     return model, tokenizer
