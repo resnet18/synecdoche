@@ -1,3 +1,5 @@
+import os
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 import torch
 from sentence_transformers import (
     SentenceTransformer,
@@ -12,6 +14,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import logging
+from datasets import Dataset as HFDataset  # 新增导入
 
 # ==================== 参数配置区 ====================
 MODEL_NAME = 'sentence-transformers/all-MiniLM-L6-v2'
@@ -35,23 +38,17 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 # 配置日志
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s', level=logging.INFO)
 
-# -------------------- 自定义数据集 --------------------
-class SimCSEDataset(Dataset):
-    """将句子列表包装成 InputExample 的数据集"""
-    def __init__(self, sentences):
-        self.examples = [InputExample(texts=[s, s]) for s in sentences]  # SimCSE 无监督：句子对 (s, s)
-
-    def __len__(self):
-        return len(self.examples)
-
-    def __getitem__(self, idx):
-        return self.examples[idx]
-
 # -------------------- 数据加载 --------------------
 def load_data():
     train_df = pd.read_csv(DATA_DIR / "train.csv")
     val_df = pd.read_csv(DATA_DIR / "validation.csv")
     return train_df['text'].tolist(), val_df['text'].tolist()
+
+# -------------------- 转换为 Hugging Face Dataset --------------------
+def create_dataset(sentences):
+    """从句子列表创建包含 anchor 和 positive 列的 HF Dataset"""
+    data = [{'anchor': s, 'positive': s} for s in sentences]  # SimCSE 无监督使用相同句子对
+    return HFDataset.from_list(data)
 
 # -------------------- 中心向量生成 --------------------
 def generate_center_vector(model, sentences, device, output_path):
@@ -72,8 +69,8 @@ def train_simcse():
 
     # 加载数据
     train_sentences, val_sentences = load_data()
-    train_dataset = SimCSEDataset(train_sentences)
-    eval_dataset = SimCSEDataset(val_sentences)
+    train_dataset = create_dataset(train_sentences)
+    eval_dataset = create_dataset(val_sentences)
 
     print(f"训练集样本数: {len(train_dataset)}")
     print(f"验证集样本数: {len(eval_dataset)}")
@@ -86,6 +83,8 @@ def train_simcse():
     train_loss = losses.MultipleNegativesRankingLoss(model)
 
     # 设置训练参数
+    # 处理 logging_dir 弃用警告：设置环境变量
+    os.environ['TENSORBOARD_LOGGING_DIR'] = str(OUTPUT_DIR / "logs")
     args = SentenceTransformerTrainingArguments(
         output_dir=str(OUTPUT_DIR / OUTPUT_SUBDIR),
         num_train_epochs=EPOCHS,
@@ -93,16 +92,16 @@ def train_simcse():
         per_device_eval_batch_size=BATCH_SIZE,
         warmup_steps=WARMUP_STEPS,
         learning_rate=LEARNING_RATE,
-        fp16=torch.cuda.is_available(),          # 自动混合精度（如果 GPU 支持）
-        evaluation_strategy="epoch",              # 每个 epoch 结束后评估
-        save_strategy="epoch",                    # 每个 epoch 保存一次
-        load_best_model_at_end=True,               # 训练结束后加载最佳模型
-        metric_for_best_model="eval_loss",         # 监控验证损失
-        greater_is_better=False,                   # 损失越小越好
-        save_total_limit=2,                         # 只保留最后两个 checkpoint
-        logging_dir=str(OUTPUT_DIR / "logs"),      # 日志目录
+        fp16=torch.cuda.is_available(),          # 自动混合精度
+        eval_strategy="epoch",                    # ✅ 新版参数名
+        save_strategy="epoch",
+        load_best_model_at_end=True,
+        metric_for_best_model="eval_loss",
+        greater_is_better=False,
+        save_total_limit=2,
         logging_steps=50,
-        report_to="none",                            # 不向外部平台报告
+        report_to="none",
+        # logging_dir 已移除，用环境变量代替
     )
 
     # 创建早停回调
@@ -117,20 +116,20 @@ def train_simcse():
         args=args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        loss=train_loss,                     # 传入损失函数
-        callbacks=[early_stopping_callback],  # 早停回调
+        loss=train_loss,
+        callbacks=[early_stopping_callback],
     )
 
     # 开始训练
     print("开始训练 O2 (SimCSE)...")
     trainer.train()
 
-    # 训练完成后，最佳模型已自动加载，保存最终模型（可选）
+    # 保存最终模型
     final_model_path = OUTPUT_DIR / OUTPUT_SUBDIR / "final_model"
     trainer.save_model(str(final_model_path))
     print(f"模型已保存至: {final_model_path}")
 
-    # 生成中心向量（使用训练好的模型）
+    # 生成中心向量
     if GENERATE_CENTER:
         generate_center_vector(model, train_sentences, device, OUTPUT_DIR)
 

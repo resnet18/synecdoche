@@ -12,19 +12,18 @@ import torch.nn.functional as F
 
 # ==================== 参数配置区 ====================
 # 路径配置
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-DATA_DIR = PROJECT_ROOT / "data" / "processed"          # 测试集所在目录
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+DATA_DIR = PROJECT_ROOT / "data" / "test"          # 测试集所在目录
 OUTPUT_DIR = PROJECT_ROOT / "results" / "o2"            # 模型和结果输出目录
 
 # 模型与文件名称
-MODEL_SUBDIR = "simcse_model"                            # 训练好的模型子目录（应与训练脚本 OUTPUT_SUBDIR 一致）
+MODEL_SUBDIR = "simcse_model/final_model"                # 训练好的模型子目录（应与训练脚本 OUTPUT_SUBDIR 一致）
 CENTER_VECTOR_FILE = "center_vector.npy"                 # 中心向量文件名
 
 # 推理参数
-BATCH_SIZE = 32                                           # 批处理大小（根据显存调整）
+BATCH_SIZE = 32                                          # 批处理大小（根据显存调整）
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # 自动选择设备
 MAP_TO_100 = True                                         # 是否将相似度 [-1,1] 映射到 [0,100]
-# ====================================================
 
 def predict():
     print(f"使用设备: {DEVICE}")
@@ -42,7 +41,7 @@ def predict():
     center_tensor = torch.tensor(center).to(DEVICE)
     
     # 加载测试集
-    test_df = pd.read_csv(DATA_DIR / "test.csv")
+    test_df = pd.read_csv(DATA_DIR / "test_positive.csv")
     texts = test_df['text'].tolist()
     print(f"测试集样本数: {len(texts)}")
     

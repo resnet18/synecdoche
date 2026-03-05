@@ -1,5 +1,6 @@
 O1
-O2
+O2 min=49.64, max=76.04, mean=65.44
+O2p min=75.74, max=81.68, mean=78.97
 B0 min=0.00, max=76.01, mean=18.37
 B1 min=0.00, max=47.00, mean=0.67
 B2 min=0.00, max=94.92, mean=83.70
