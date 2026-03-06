@@ -1,0 +1,51 @@
+2026-03-06 21:28:24,173 - INFO - sentence_transformers.SentenceTransformer - Use pytorch device_name: cuda:0
+2026-03-06 21:28:24,173 - INFO - sentence_transformers.SentenceTransformer - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2026-03-06 21:28:25,337 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 21:28:25,478 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/modules.json "HTTP/1.1 200 OK"
+2026-03-06 21:28:25,801 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 21:28:25,950 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/config_sentence_transformers.json "HTTP/1.1 200 OK"
+2026-03-06 21:28:26,251 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 21:28:27,329 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/config_sentence_transformers.json "HTTP/1.1 200 OK"
+2026-03-06 21:28:27,640 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/sentence-transformers/all-MiniLM-L6-v2/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 21:28:27,870 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/README.md "HTTP/1.1 200 OK"
+2026-03-06 21:28:28,204 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 21:28:28,345 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/modules.json "HTTP/1.1 200 OK"
+2026-03-06 21:28:28,685 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/sentence-transformers/all-MiniLM-L6-v2/resolve/main/sentence_bert_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 21:28:29,424 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/sentence_bert_config.json "HTTP/1.1 200 OK"
+2026-03-06 21:28:30,059 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/sentence-transformers/all-MiniLM-L6-v2/resolve/main/adapter_config.json "HTTP/1.1 404 Not Found"
+2026-03-06 21:28:31,239 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 21:28:31,414 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/config.json "HTTP/1.1 200 OK"
+2026-03-06 21:28:31,867 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 21:28:32,124 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/config.json "HTTP/1.1 200 OK"
+2026-03-06 21:28:32,437 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 21:28:32,631 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/tokenizer_config.json "HTTP/1.1 200 OK"
+2026-03-06 21:28:33,352 - INFO - httpx - HTTP Request: GET https://hf-mirror.com/api/models/sentence-transformers/all-MiniLM-L6-v2/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+2026-03-06 21:28:34,062 - INFO - httpx - HTTP Request: GET https://hf-mirror.com/api/models/sentence-transformers/all-MiniLM-L6-v2/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-03-06 21:28:34,450 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/sentence-transformers/all-MiniLM-L6-v2/resolve/main/1_Pooling/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-06 21:28:34,596 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/1_Pooling%2Fconfig.json "HTTP/1.1 200 OK"
+2026-03-06 21:28:34,777 - INFO - httpx - HTTP Request: GET https://hf-mirror.com/api/models/sentence-transformers/all-MiniLM-L6-v2 "HTTP/1.1 200 OK"
+2026-03-06 21:28:37,160 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-16
+2026-03-06 21:28:37,160 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-16
+2026-03-06 21:28:38,250 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-32
+2026-03-06 21:28:38,250 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-32
+2026-03-06 21:28:39,303 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-48
+2026-03-06 21:28:39,304 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-48
+2026-03-06 21:28:40,359 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-64
+2026-03-06 21:28:40,360 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-64
+2026-03-06 21:28:41,409 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-80
+2026-03-06 21:28:41,409 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-80
+2026-03-06 21:28:42,463 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-96
+2026-03-06 21:28:42,463 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-96
+2026-03-06 21:28:43,541 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-112
+2026-03-06 21:28:43,541 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-112
+2026-03-06 21:28:44,606 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-128
+2026-03-06 21:28:44,606 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-128
+2026-03-06 21:28:45,674 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-144
+2026-03-06 21:28:45,675 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-144
+2026-03-06 21:28:46,767 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-160
+2026-03-06 21:28:46,767 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-160
+2026-03-06 21:28:47,096 - INFO - sentence_transformers.trainer - Loading best model from D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-144 (score: 0.028437329456210136).
+2026-03-06 21:28:47,098 - INFO - sentence_transformers.SentenceTransformer - Use pytorch device_name: cuda:0
+2026-03-06 21:28:47,098 - INFO - sentence_transformers.SentenceTransformer - Load pretrained SentenceTransformer: D:\Projects\synecdoche\results\o2\simcse_model\checkpoint-144
+2026-03-06 21:28:47,285 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\o2\simcse_model\final_model
+2026-03-06 21:28:47,285 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\o2\simcse_model\final_model

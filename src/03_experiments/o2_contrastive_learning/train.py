@@ -19,8 +19,9 @@ from datasets import Dataset as HFDataset  # 新增导入
 # ==================== 参数配置区 ====================
 MODEL_NAME = 'sentence-transformers/all-MiniLM-L6-v2'
 BATCH_SIZE = 32
-EPOCHS = 10
-WARMUP_STEPS = 100
+EPOCHS = 12
+WARMUP_STEPS = 0
+WEIGHT_DECAY = 0.01
 LEARNING_RATE = 2e-5
 OUTPUT_SUBDIR = "simcse_model"
 GENERATE_CENTER = True
@@ -36,7 +37,17 @@ OUTPUT_DIR = PROJECT_ROOT / "results" / "o2"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # 配置日志
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s', level=logging.INFO)
+# 配置日志（同时输出到控制台和文件）
+log_file = OUTPUT_DIR / "training.log"
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+    level=logging.INFO,
+    handlers=[
+        logging.StreamHandler(),  # 控制台
+        logging.FileHandler(log_file, encoding='utf-8', mode='w')  # 文件（新增）
+    ]
+)
+print(f"日志将保存至: {log_file}")  # 确认路径
 
 # -------------------- 数据加载 --------------------
 def load_data():
@@ -91,14 +102,16 @@ def train_simcse():
         per_device_train_batch_size=BATCH_SIZE,
         per_device_eval_batch_size=BATCH_SIZE,
         warmup_steps=WARMUP_STEPS,
+        weight_decay=WEIGHT_DECAY,
         learning_rate=LEARNING_RATE,
         fp16=torch.cuda.is_available(),          # 自动混合精度
-        eval_strategy="epoch",                    # ✅ 新版参数名
+        eval_strategy="epoch",                   # 新版参数名
         save_strategy="epoch",
         load_best_model_at_end=True,
         metric_for_best_model="eval_loss",
         greater_is_better=False,
         save_total_limit=2,
+        logging_strategy="epoch",
         logging_steps=50,
         report_to="none",
         # logging_dir 已移除，用环境变量代替

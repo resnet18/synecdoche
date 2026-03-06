@@ -99,9 +99,9 @@ print(embeddings.shape)
 # Get the similarity scores for the embeddings
 similarities = model.similarity(embeddings, embeddings)
 print(similarities)
-# tensor([[1.0000, 1.0000, 0.3179],
-#         [1.0000, 1.0000, 0.3179],
-#         [0.3179, 0.3179, 1.0000]])
+# tensor([[1.0000, 1.0000, 0.2537],
+#         [1.0000, 1.0000, 0.2537],
+#         [0.2537, 0.2537, 1.0000]])
 ```
 
 <!--
@@ -198,9 +198,9 @@ You can finetune this model on your own dataset.
 #### Non-Default Hyperparameters
 
 - `per_device_train_batch_size`: 32
-- `num_train_epochs`: 10
+- `num_train_epochs`: 12
 - `learning_rate`: 2e-05
-- `warmup_steps`: 100
+- `weight_decay`: 0.01
 - `fp16`: True
 - `eval_strategy`: epoch
 - `per_device_eval_batch_size`: 32
@@ -210,15 +210,15 @@ You can finetune this model on your own dataset.
 <details><summary>Click to expand</summary>
 
 - `per_device_train_batch_size`: 32
-- `num_train_epochs`: 10
+- `num_train_epochs`: 12
 - `max_steps`: -1
 - `learning_rate`: 2e-05
 - `lr_scheduler_type`: linear
 - `lr_scheduler_kwargs`: None
-- `warmup_steps`: 100
+- `warmup_steps`: 0
 - `optim`: adamw_torch_fused
 - `optim_args`: None
-- `weight_decay`: 0.0
+- `weight_decay`: 0.01
 - `adam_beta1`: 0.9
 - `adam_beta2`: 0.999
 - `adam_epsilon`: 1e-08
@@ -312,19 +312,14 @@ You can finetune this model on your own dataset.
 ### Training Logs
 | Epoch   | Step    | Training Loss | Validation Loss |
 |:-------:|:-------:|:-------------:|:---------------:|
-| 1.0     | 16      | -             | 0.0648          |
-| 2.0     | 32      | -             | 0.0471          |
-| 3.0     | 48      | -             | 0.0411          |
-| 3.125   | 50      | 0.1002        | -               |
-| 4.0     | 64      | -             | 0.0361          |
-| 5.0     | 80      | -             | 0.0332          |
-| 6.0     | 96      | -             | 0.0328          |
-| 6.25    | 100     | 0.0366        | -               |
-| 7.0     | 112     | -             | 0.0311          |
-| 8.0     | 128     | -             | 0.0292          |
-| **9.0** | **144** | **-**         | **0.0284**      |
-| 9.375   | 150     | 0.0330        | -               |
-| 10.0    | 160     | -             | 0.0286          |
+| 1.0     | 16      | 0.0730        | 0.0417          |
+| 2.0     | 32      | 0.0428        | 0.0379          |
+| 3.0     | 48      | 0.0304        | 0.0336          |
+| 4.0     | 64      | 0.0376        | 0.0322          |
+| 5.0     | 80      | 0.0309        | 0.0312          |
+| 6.0     | 96      | 0.0357        | 0.0316          |
+| 7.0     | 112     | 0.0294        | 0.0310          |
+| **8.0** | **128** | **0.0293**    | **0.0301**      |
 
 * The bold row denotes the saved checkpoint.
 

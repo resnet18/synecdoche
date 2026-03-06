@@ -1,130 +1,189 @@
-"""
-B6: RoBERTa-large + SimCSE (340M参数)
-与 O2 同范式但更大，对比验证规模效应
-支持验证集早停和每个epoch损失打印
-"""
-
+import os
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 import torch
-from sentence_transformers import SentenceTransformer, InputExample, losses
-from sentence_transformers.evaluation import LossEvaluator
-from sentence_transformers import evaluation
-from torch.utils.data import DataLoader
+from sentence_transformers import (
+    SentenceTransformer,
+    InputExample,
+    losses,
+    SentenceTransformerTrainer,
+    SentenceTransformerTrainingArguments
+)
+from transformers.trainer_callback import EarlyStoppingCallback
+from torch.utils.data import DataLoader, Dataset
 import pandas as pd
 import numpy as np
 from pathlib import Path
+import logging
+from datasets import Dataset as HFDataset
 
 # ==================== 参数配置区 ====================
-# 模型与训练基本参数
-MODEL_NAME = 'sentence-transformers/nli-roberta-large-v2'   # 可选: 'sentence-transformers/nli-roberta-large-v2' 或 'simcse-roberta-large' 等
-BATCH_SIZE = 8                                               # 340M 大模型建议小batch (8或16)
-EPOCHS = 10                                                   # 最大训练轮数（早停可能提前结束）
-WARMUP_STEPS = 50                                             # 预热步数
-LEARNING_RATE = 2e-5                                          # 学习率
-OUTPUT_SUBDIR = "roberta_simcse"                              # 模型保存子目录名
-SAVE_BEST_MODEL = True                                         # 是否保存验证损失最佳的模型
-GENERATE_CENTER = True                                         # 是否生成训练集中心向量
+MODEL_NAME = 'hfl/chinese-roberta-wwm-ext-large'  # 中文纯MLM基座，355M参数
+# 备选（显存不足时）: 'hfl/chinese-roberta-wwm-ext' (102M参数，base版)
+
+BATCH_SIZE = 4                                               # 355M模型，16G显存安全值
+MAX_SEQ_LENGTH = 128                                         # 显存保护
+EPOCHS = 10                                                  # 最大轮数（早停可能提前结束）
+WARMUP_STEPS = 50                                            # 预热步数
+LEARNING_RATE = 2e-5                                         # SimCSE推荐学习率
+OUTPUT_SUBDIR = "roberta_simcse"                             # 保存子目录
+GENERATE_CENTER = True                                       # 生成中心向量
 
 # 早停参数
-USE_EARLY_STOPPING = True                                      # 是否启用早停
-EARLY_STOPPING_PATIENCE = 3                                     # 验证损失连续多少轮不下降就停止
-EARLY_STOPPING_MIN_DELTA = 0.001                                # 最小改善阈值（损失下降小于此值视为无改善）
-EVALUATE_EVERY_EPOCH = True                                     # 每个epoch评估验证损失（用于早停监控）
+EARLY_STOPPING_PATIENCE = 3                                  # 连续几轮无改善则停
+EARLY_STOPPING_MIN_DELTA = 0.001                             # 最小改善阈值
 # ====================================================
 
-# 路径配置
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-DATA_DIR = PROJECT_ROOT / "data" / "processed"                 # 数据目录：包含 train.csv, validation.csv
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+DATA_DIR = PROJECT_ROOT / "data" / "final"                   # 注意：使用final目录（脱敏数据）
 OUTPUT_DIR = PROJECT_ROOT / "results" / "b6"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+# 配置日志（同时输出到控制台和文件）
+log_file = OUTPUT_DIR / "training.log"
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+    level=logging.INFO,
+    handlers=[
+        logging.StreamHandler(),  # 原有：控制台输出
+        logging.FileHandler(log_file, encoding='utf-8')  # 新增：保存到文件
+    ]
+)
+# -------------------- 数据加载 --------------------
 def load_data():
-    """加载训练集和验证集"""
     train_df = pd.read_csv(DATA_DIR / "train.csv")
     val_df = pd.read_csv(DATA_DIR / "validation.csv")
-    return train_df, val_df
+    return train_df['text'].tolist(), val_df['text'].tolist()
 
+# -------------------- 转换为 Hugging Face Dataset --------------------
+def create_dataset(sentences):
+    """SimCSE无监督：anchor和positive是同一个句子（经过不同dropout）"""
+    data = [{'anchor': s, 'positive': s} for s in sentences]
+    return HFDataset.from_list(data)
+
+# -------------------- 中心向量生成 --------------------
+def generate_center_vector(model, sentences, device, output_path):
+    print("生成中心向量...")
+    embeddings = model.encode(
+        sentences, 
+        convert_to_tensor=True, 
+        device=device,
+        show_progress_bar=True,
+        batch_size=16  # 推理可以用较大batch
+    )
+    center = torch.mean(embeddings, dim=0)
+    np.save(output_path / "center_vector.npy", center.cpu().numpy())
+    print(f"中心向量已保存: {output_path / 'center_vector.npy'}")
+
+# -------------------- 主训练函数 --------------------
 def train_b6():
-    # 检查GPU
+    # 设备检测
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"使用设备: {device}")
     if device == "cuda":
         print(f"显卡: {torch.cuda.get_device_name(0)}")
-        print(f"显存总量: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
-    
-    # 加载 RoBERTa-large (340M参数)
-    print(f"加载模型: {MODEL_NAME}")
-    model = SentenceTransformer(MODEL_NAME)
-    model.to(device)
-    
-    if device == "cuda":
-        print(f"显存已分配: {torch.cuda.memory_allocated() / 1024**2:.0f} MB")
-    
-    # 加载数据
-    train_df, val_df = load_data()
-    train_sentences = train_df['text'].tolist()
-    val_sentences = val_df['text'].tolist()
-    
-    # 构造训练集样本
-    train_examples = [InputExample(texts=[s, s]) for s in train_sentences]
-    train_dataloader = DataLoader(train_examples, batch_size=BATCH_SIZE, shuffle=True)
-    train_loss = losses.MultipleNegativesRankingLoss(model)
-    
-    # 构造验证集样本（同样使用无监督方式）
-    val_examples = [InputExample(texts=[s, s]) for s in val_sentences]
-    val_dataloader = DataLoader(val_examples, batch_size=BATCH_SIZE, shuffle=False)
-    
-    # ----- 设置 evaluator 和早停 -----
-    evaluator = None
-    early_stopping = None
-    if EVALUATE_EVERY_EPOCH:
-        # 验证集上的损失评估器
-        evaluator = LossEvaluator(val_dataloader, loss_model=train_loss, name='val_loss')
-        # 每个epoch的步数（用于设置 evaluation_steps）
-        steps_per_epoch = len(train_dataloader)
-        
-        if USE_EARLY_STOPPING:
-            early_stopping = evaluation.EarlyStopping(
-                evaluator=evaluator,
-                patience=EARLY_STOPPING_PATIENCE,
-                min_delta=EARLY_STOPPING_MIN_DELTA
-            )
-            print(f"早停已启用：耐心={EARLY_STOPPING_PATIENCE}，最小改善={EARLY_STOPPING_MIN_DELTA}")
-    else:
-        steps_per_epoch = 0  # 不评估
-    
-    print("开始训练 B6 (RoBERTa-large SimCSE)...")
-    print(f"训练集样本数: {len(train_examples)}")
-    print(f"验证集样本数: {len(val_examples)}")
-    if EVALUATE_EVERY_EPOCH:
-        print(f"每个epoch评估一次验证损失（steps_per_epoch={steps_per_epoch}）")
-    
-    # 训练（包含早停）
-    model.fit(
-        train_objectives=[(train_dataloader, train_loss)],
-        epochs=EPOCHS,
-        warmup_steps=WARMUP_STEPS,
-        optimizer_params={'lr': LEARNING_RATE},
-        output_path=str(OUTPUT_DIR / OUTPUT_SUBDIR),
-        show_progress_bar=True,
-        save_best_model=SAVE_BEST_MODEL,
-        evaluator=evaluator,                 # 验证集评估器
-        evaluation_steps=steps_per_epoch,    # 每个epoch评估一次
-        early_stopping=early_stopping        # 早停对象
-    )
-    
-    print(f"模型已保存至: {OUTPUT_DIR / OUTPUT_SUBDIR}")
-    
-    # 生成中心向量（用于后续推理）
-    if GENERATE_CENTER:
-        generate_center_vector(model, train_sentences, device)
+        total_mem = torch.cuda.get_device_properties(0).total_memory / 1024**3
+        print(f"显存总量: {total_mem:.1f} GB")
+        torch.cuda.empty_cache()
 
-def generate_center_vector(model, sentences, device):
-    """计算训练集中心向量"""
-    print("生成中心向量...")
-    embeddings = model.encode(sentences, convert_to_tensor=True, device=device)
-    center = torch.mean(embeddings, dim=0)
-    np.save(OUTPUT_DIR / "center_vector.npy", center.cpu().numpy())
-    print("中心向量已保存")
+    # 加载数据
+    train_sentences, val_sentences = load_data()
+    train_dataset = create_dataset(train_sentences)
+    eval_dataset = create_dataset(val_sentences)
+
+    print(f"训练集样本数: {len(train_dataset)}")
+    print(f"验证集样本数: {len(eval_dataset)}")
+
+    # 加载模型（中文RoBERTa-large，纯MLM基座）
+    print(f"\n加载模型: {MODEL_NAME}")
+    print("注意：使用纯MLM预训练基座（355M参数）+ Mean Pooling...")
+    
+    try:
+        model = SentenceTransformer(MODEL_NAME)
+        model.max_seq_length = MAX_SEQ_LENGTH  # 限制序列长度
+        model.to(device)
+    except Exception as e:
+        print(f"模型加载失败: {e}")
+        raise
+
+    # 显存状态检查
+    if device == "cuda":
+        allocated = torch.cuda.memory_allocated() / 1024**2
+        print(f"模型加载后显存: {allocated:.0f} MB")
+
+    # 定义SimCSE损失函数（MultipleNegativesRankingLoss）
+    train_loss = losses.MultipleNegativesRankingLoss(model)
+
+    # 设置训练参数
+    os.environ['TENSORBOARD_LOGGING_DIR'] = str(OUTPUT_DIR / "logs")
+    
+    args = SentenceTransformerTrainingArguments(
+        output_dir=str(OUTPUT_DIR / OUTPUT_SUBDIR),
+        num_train_epochs=EPOCHS,
+        per_device_train_batch_size=BATCH_SIZE,
+        per_device_eval_batch_size=BATCH_SIZE,
+        warmup_steps=WARMUP_STEPS,
+        learning_rate=LEARNING_RATE,
+        fp16=torch.cuda.is_available(),          # 自动混合精度（节省显存）
+        eval_strategy="epoch",                    # 每个epoch评估验证集
+        save_strategy="epoch",
+        load_best_model_at_end=True,
+        metric_for_best_model="eval_loss",
+        greater_is_better=False,
+        save_total_limit=2,
+        logging_strategy="epoch",
+        logging_steps=50,
+        report_to="none",
+    )
+
+    # 创建早停回调
+    early_stopping_callback = EarlyStoppingCallback(
+        early_stopping_patience=EARLY_STOPPING_PATIENCE,
+        early_stopping_threshold=EARLY_STOPPING_MIN_DELTA
+    )
+
+    # 创建 Trainer
+    trainer = SentenceTransformerTrainer(
+        model=model,
+        args=args,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        loss=train_loss,
+        callbacks=[early_stopping_callback],
+    )
+
+    # 开始训练（带OOM捕获）
+    print(f"\n开始训练 B6 (Chinese-RoBERTa-large SimCSE)...")
+    print(f"模型参数: ~355M")
+    print(f"Batch size: {BATCH_SIZE}, Max seq length: {MAX_SEQ_LENGTH}")
+    print(f"学习率: {LEARNING_RATE}, 早停耐心: {EARLY_STOPPING_PATIENCE}")
+    
+    try:
+        trainer.train()
+        
+        # 保存最终模型
+        final_model_path = OUTPUT_DIR / OUTPUT_SUBDIR / "final_model"
+        trainer.save_model(str(final_model_path))
+        print(f"\n✓ 模型已保存至: {final_model_path}")
+        
+    except RuntimeError as e:
+        if "out of memory" in str(e).lower() or "CUDA" in str(e):
+            print("\n" + "="*50)
+            print("!!! 显存不足 (Out of Memory) !!!")
+            print("="*50)
+            print("建议降级方案：")
+            print("1. 修改 BATCH_SIZE = 2 甚至 1")
+            print("2. 修改 MAX_SEQ_LENGTH = 64")
+            print("3. 换用轻量模型: 'hfl/chinese-roberta-wwm-ext' (102M参数)")
+            print("4. 如果还不行，跳过B6-simcse，只跑B6-frozen")
+            print("="*50)
+            raise e
+        else:
+            raise e
+
+    # 生成中心向量
+    if GENERATE_CENTER:
+        print("\n生成训练集中心向量...")
+        generate_center_vector(model, train_sentences, device, OUTPUT_DIR)
 
 if __name__ == "__main__":
     train_b6()
