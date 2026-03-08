@@ -1,5 +1,6 @@
 import os
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
+import random
 import torch
 from sentence_transformers import (
     SentenceTransformer,
@@ -28,6 +29,20 @@ GENERATE_CENTER = True
 # 早停参数
 EARLY_STOPPING_PATIENCE = 3
 EARLY_STOPPING_MIN_DELTA = 0.001
+
+SEED = 325  # 已完成今日325大学习
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # 如果有CUDA
+    # 以下两行确保确定性行为，可能会稍微降低速度，但保证可复现
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+set_seed(SEED)
+print(f"随机种子已固定: {SEED}")
 # ====================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]

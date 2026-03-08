@@ -63,7 +63,7 @@ def predict():
     print(f"中心向量维度: {center.shape[0]}")
     
     # 加载测试集（支持多个测试文件）
-    test_files = ["test_positive.csv"]  # 可同时处理原文和脱敏版本
+    test_files = ["test_positive.csv"]
     for test_file in test_files:
         test_path = DATA_DIR / test_file
         if not test_path.exists():

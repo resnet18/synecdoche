@@ -32,7 +32,7 @@ ABLATION_DIR = os.path.join(BASE_DIR, 'results', 'ablation')
 os.makedirs(ABLATION_DIR, exist_ok=True)
 
 REFERENCE_PATH = os.path.join(BASE_DIR, 'data', 'final', 'reference.csv')
-TEST_ORIG_PATH = os.path.join(BASE_DIR, 'data', 'test', 'test_positive.csv')
+TEST_ORIG_PATH = os.path.join(BASE_DIR, 'data', 'test', 'test_ablation.csv')
 DES_PATH = os.path.join(RESULTS_DIR, 'predictions.csv')
 
 print("=== B7 Ablation: Original vs Desensitized ===")

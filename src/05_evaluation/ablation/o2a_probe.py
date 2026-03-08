@@ -24,8 +24,8 @@ MODEL_DIR = os.path.join(BASE_DIR, 'simcse_probe', 'final_model')
 CENTER_PATH = os.path.join(BASE_DIR, 'center_vector.npy')
 
 # 测试文件
-TEST_ORIG_PATH = os.path.join(PROJECT_ROOT, 'data', 'test', 'test_positive.csv')
-TEST_DESEN_PATH = os.path.join(PROJECT_ROOT, 'data', 'test', 'test_ablation.csv')
+TEST_ORIG_PATH = os.path.join(PROJECT_ROOT, 'data', 'test', 'test_ablation.csv')
+TEST_DESEN_PATH = os.path.join(PROJECT_ROOT, 'data', 'test', 'test_positive.csv')
 
 os.makedirs(ABLATION_DIR, exist_ok=True)
 
