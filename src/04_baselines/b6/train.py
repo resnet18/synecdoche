@@ -23,13 +23,14 @@ MODEL_NAME = 'hfl/chinese-roberta-wwm-ext-large'  # 中文纯MLM基座，355M参
 BATCH_SIZE = 4                                               # 355M模型，16G显存安全值
 MAX_SEQ_LENGTH = 128                                         # 显存保护
 EPOCHS = 10                                                  # 最大轮数（早停可能提前结束）
-WARMUP_STEPS = 50                                            # 预热步数
-LEARNING_RATE = 2e-5                                         # SimCSE推荐学习率
+WARMUP_STEPS = 0                                             # 预热步数
+LEARNING_RATE = 1e-5                                         # 默认SimCSE推荐学习率
 OUTPUT_SUBDIR = "roberta_simcse"                             # 保存子目录
 GENERATE_CENTER = True                                       # 生成中心向量
+WEIGHT_DECAY = 0.1
 
 # 早停参数
-EARLY_STOPPING_PATIENCE = 3                                  # 连续几轮无改善则停
+EARLY_STOPPING_PATIENCE = 5                                  # 连续几轮无改善则停
 EARLY_STOPPING_MIN_DELTA = 0.001                             # 最小改善阈值
 # ====================================================
 
@@ -123,6 +124,7 @@ def train_b6():
         per_device_eval_batch_size=BATCH_SIZE,
         warmup_steps=WARMUP_STEPS,
         learning_rate=LEARNING_RATE,
+        weight_decay=WEIGHT_DECAY,
         fp16=torch.cuda.is_available(),          # 自动混合精度（节省显存）
         eval_strategy="epoch",                    # 每个epoch评估验证集
         save_strategy="epoch",

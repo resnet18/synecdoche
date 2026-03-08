@@ -98,9 +98,9 @@ print(embeddings.shape)
 # Get the similarity scores for the embeddings
 similarities = model.similarity(embeddings, embeddings)
 print(similarities)
-# tensor([[1.0000, 1.0000, 0.4054],
-#         [1.0000, 1.0000, 0.4054],
-#         [0.4054, 0.4054, 1.0000]])
+# tensor([[1.0000, 1.0000, 0.3734],
+#         [1.0000, 1.0000, 0.3734],
+#         [0.3734, 0.3734, 1.0000]])
 ```
 
 <!--
@@ -198,8 +198,8 @@ You can finetune this model on your own dataset.
 
 - `per_device_train_batch_size`: 4
 - `num_train_epochs`: 10
-- `learning_rate`: 2e-05
-- `warmup_steps`: 50
+- `learning_rate`: 1e-05
+- `weight_decay`: 0.1
 - `fp16`: True
 - `eval_strategy`: epoch
 - `per_device_eval_batch_size`: 4
@@ -211,13 +211,13 @@ You can finetune this model on your own dataset.
 - `per_device_train_batch_size`: 4
 - `num_train_epochs`: 10
 - `max_steps`: -1
-- `learning_rate`: 2e-05
+- `learning_rate`: 1e-05
 - `lr_scheduler_type`: linear
 - `lr_scheduler_kwargs`: None
-- `warmup_steps`: 50
+- `warmup_steps`: 0
 - `optim`: adamw_torch_fused
 - `optim_args`: None
-- `weight_decay`: 0.0
+- `weight_decay`: 0.1
 - `adam_beta1`: 0.9
 - `adam_beta2`: 0.999
 - `adam_epsilon`: 1e-08
@@ -311,10 +311,12 @@ You can finetune this model on your own dataset.
 ### Training Logs
 | Epoch   | Step    | Training Loss | Validation Loss |
 |:-------:|:-------:|:-------------:|:---------------:|
-| 1.0     | 125     | 0.0144        | 0.0000          |
+| 1.0     | 125     | 0.0038        | 0.0000          |
 | 2.0     | 250     | 0.0001        | 0.0000          |
-| **3.0** | **375** | **0.0**       | **0.0**         |
+| 3.0     | 375     | 0.0000        | 0.0000          |
 | 4.0     | 500     | 0.0001        | 0.0000          |
+| 5.0     | 625     | 0.0000        | 0.0000          |
+| **6.0** | **750** | **0.0**       | **0.0**         |
 
 * The bold row denotes the saved checkpoint.
 

@@ -1,5 +1,5 @@
 O1
-O2 min=49.64, max=76.04, mean=65.44
+O2 min=48.13, max=74.91, mean=63.30
 O2p min=75.74, max=81.68, mean=78.97
 B0 min=0.00, max=76.01, mean=18.37
 B1 min=0.00, max=47.00, mean=0.67
@@ -7,7 +7,7 @@ B2 min=0.00, max=94.92, mean=83.70
 B3 min=0.00, max=77.66, mean=17.86
 B4 min=72.96, max=99.28, mean=93.99
 B5 min=76.23, max=94.79, mean=87.79
-B6 min=66.16, max=77.14, mean=73.28
+B6 min=65.23, max=77.22, mean=72.77
 B6f min=89.01, max=97.10, mean=94.94
 B7 min=75.00, max=85.00, mean=84.14
 B8 min=50.00, max=85.00, mean=74.71

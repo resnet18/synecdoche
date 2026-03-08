@@ -60,3 +60,38 @@
 2026-03-06 20:27:39,338 - INFO - sentence_transformers.SentenceTransformer - Load pretrained SentenceTransformer: D:\Projects\synecdoche\results\b6\roberta_simcse\checkpoint-375
 2026-03-06 20:27:40,109 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\b6\roberta_simcse\final_model
 2026-03-06 20:27:40,109 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\b6\roberta_simcse\final_model
+2026-03-08 19:46:18,303 - INFO - sentence_transformers.SentenceTransformer - Use pytorch device_name: cuda:0
+2026-03-08 19:46:18,304 - INFO - sentence_transformers.SentenceTransformer - Load pretrained SentenceTransformer: hfl/chinese-roberta-wwm-ext-large
+2026-03-08 19:46:19,466 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/hfl/chinese-roberta-wwm-ext-large/resolve/main/modules.json "HTTP/1.1 404 Not Found"
+2026-03-08 19:46:19,491 - WARNING - sentence_transformers.SentenceTransformer - No sentence-transformers model found with name hfl/chinese-roberta-wwm-ext-large. Creating a new one with mean pooling.
+2026-03-08 19:46:19,737 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/hfl/chinese-roberta-wwm-ext-large/resolve/main/adapter_config.json "HTTP/1.1 404 Not Found"
+2026-03-08 19:46:19,979 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/hfl/chinese-roberta-wwm-ext-large/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-08 19:46:20,061 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/hfl/chinese-roberta-wwm-ext-large/a25cc9e05974bd9687e528edd516f2cfdb3f5db9/config.json "HTTP/1.1 200 OK"
+2026-03-08 19:46:20,379 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/hfl/chinese-roberta-wwm-ext-large/resolve/main/model.safetensors "HTTP/1.1 404 Not Found"
+2026-03-08 19:46:20,528 - INFO - httpx - HTTP Request: GET https://hf-mirror.com/api/models/hfl/chinese-roberta-wwm-ext-large "HTTP/1.1 200 OK"
+2026-03-08 19:46:20,688 - INFO - httpx - HTTP Request: GET https://hf-mirror.com/api/models/hfl/chinese-roberta-wwm-ext-large/commits/main "HTTP/1.1 200 OK"
+2026-03-08 19:46:21,079 - INFO - httpx - HTTP Request: GET https://hf-mirror.com/api/models/hfl/chinese-roberta-wwm-ext-large/discussions?p=0 "HTTP/1.1 403 Forbidden"
+2026-03-08 19:46:21,965 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/hfl/chinese-roberta-wwm-ext-large/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-08 19:46:22,041 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/hfl/chinese-roberta-wwm-ext-large/a25cc9e05974bd9687e528edd516f2cfdb3f5db9/config.json "HTTP/1.1 200 OK"
+2026-03-08 19:46:22,299 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/hfl/chinese-roberta-wwm-ext-large/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-08 19:46:22,388 - INFO - httpx - HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/hfl/chinese-roberta-wwm-ext-large/a25cc9e05974bd9687e528edd516f2cfdb3f5db9/tokenizer_config.json "HTTP/1.1 200 OK"
+2026-03-08 19:46:22,488 - INFO - httpx - HTTP Request: GET https://hf-mirror.com/api/models/hfl/chinese-roberta-wwm-ext-large/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+2026-03-08 19:46:22,560 - INFO - httpx - HTTP Request: GET https://hf-mirror.com/api/models/hfl/chinese-roberta-wwm-ext-large/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-03-08 19:46:22,661 - INFO - httpx - HTTP Request: GET https://hf-mirror.com/api/models/hfl/chinese-roberta-wwm-ext-large "HTTP/1.1 200 OK"
+2026-03-08 19:46:53,486 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\b6\roberta_simcse\checkpoint-125
+2026-03-08 19:46:53,486 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\b6\roberta_simcse\checkpoint-125
+2026-03-08 19:47:23,733 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\b6\roberta_simcse\checkpoint-250
+2026-03-08 19:47:23,733 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\b6\roberta_simcse\checkpoint-250
+2026-03-08 19:48:04,007 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\b6\roberta_simcse\checkpoint-375
+2026-03-08 19:48:04,008 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\b6\roberta_simcse\checkpoint-375
+2026-03-08 19:48:32,236 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\b6\roberta_simcse\checkpoint-500
+2026-03-08 19:48:32,236 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\b6\roberta_simcse\checkpoint-500
+2026-03-08 19:49:00,829 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\b6\roberta_simcse\checkpoint-625
+2026-03-08 19:49:00,830 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\b6\roberta_simcse\checkpoint-625
+2026-03-08 19:49:30,473 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\b6\roberta_simcse\checkpoint-750
+2026-03-08 19:49:30,473 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\b6\roberta_simcse\checkpoint-750
+2026-03-08 19:49:33,491 - INFO - sentence_transformers.trainer - Loading best model from D:\Projects\synecdoche\results\b6\roberta_simcse\checkpoint-750 (score: 4.426866325957235e-06).
+2026-03-08 19:49:33,493 - INFO - sentence_transformers.SentenceTransformer - Use pytorch device_name: cuda:0
+2026-03-08 19:49:33,493 - INFO - sentence_transformers.SentenceTransformer - Load pretrained SentenceTransformer: D:\Projects\synecdoche\results\b6\roberta_simcse\checkpoint-750
+2026-03-08 19:49:34,228 - INFO - sentence_transformers.trainer - Saving model checkpoint to D:\Projects\synecdoche\results\b6\roberta_simcse\final_model
+2026-03-08 19:49:34,228 - INFO - sentence_transformers.SentenceTransformer - Save model to D:\Projects\synecdoche\results\b6\roberta_simcse\final_model
