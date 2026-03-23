@@ -28,15 +28,18 @@ test_texts = test_df['text'].astype(str).tolist()
 
 def extract_punctuation_features(text):
     """提取标点特征：省略号、破折号、逗号、句号密度（占总字数比例）"""
-    length = max(len(text), 1)  # 防止除0
+    # === 关键修复：去除脱敏占位符 [概念] [属性] 等 ===
+    clean_text = re.sub(r'\[[^\]]+\]', '', text)  # 去除方括号及其内容
     
-    # 统计各类标点（考虑中文和英文标点）
-    ellipsis = len(re.findall(r'…+|\.{3,}', text))  # 省略号
-    dash = len(re.findall(r'——|--+', text))         # 破折号
-    comma = len(re.findall(r'，|,', text))          # 逗号
-    period = len(re.findall(r'。|\.', text))        # 句号
-    question = len(re.findall(r'？|\?', text))      # 问号
-    exclaim = len(re.findall(r'！|!', text))        # 感叹号
+    length = max(len(clean_text), 1)  # 基于清理后的文本长度
+    
+    # 基于clean_text统计各类标点（不再统计方括号）
+    ellipsis = len(re.findall(r'…+|\.{3,}', clean_text))
+    dash = len(re.findall(r'——|--+', clean_text))
+    comma = len(re.findall(r'，|,', clean_text))
+    period = len(re.findall(r'。|\.', clean_text))
+    question = len(re.findall(r'？|\?', clean_text))
+    exclaim = len(re.findall(r'！|!', clean_text))
     
     # 返回密度特征（与长度无关）
     return np.array([
