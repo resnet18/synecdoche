@@ -6,6 +6,7 @@ B1 min=0.00, max=47.00, mean=0.67
 B2 min=0.00, max=95.63, mean=82.76
 B3 min=0.00, max=77.66, mean=17.86
 B4 min=72.96, max=99.28, mean=93.99
+B4P min=70.18, max=94.92, mean=85.47
 B5 min=76.23, max=94.79, mean=87.79
 B6 min=65.23, max=77.22, mean=72.77
 B6f min=89.01, max=97.10, mean=94.94
