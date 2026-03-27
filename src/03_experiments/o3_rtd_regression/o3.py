@@ -1,16 +1,18 @@
 """
-O3: ELECTRA-small 零样本 (冻结Discriminator，取[CLS] embedding，无微调)
+O3: ELECTRA-small 零样本 (冻结Discriminator，无微调)
 基于哈工大-讯飞联合实验室 chinese-electra-180g-small-discriminator (14M参数)
 """
+
+import os
+os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+os.environ["HF_HUB_DOWNLOAD_TIMEOUT"] = "60"
+
 from transformers import ElectraTokenizer, ElectraModel
 import pandas as pd
 import numpy as np
 import torch
 import torch.nn.functional as F
 from pathlib import Path
-import os
-
-
 
 # === 模型参数（按需调整） ===
 MODEL_NAME = 'hfl/chinese-electra-180g-small-discriminator'  # 14M参数，中文ELECTRA-small
@@ -19,7 +21,7 @@ DEVICE = 'auto'  # 'auto', 'cuda', 或 'cpu'
 MAX_LENGTH = 128  # ELECTRA-small最大序列长度（80字短文本绰绰有余）
 
 # === 路径配置（自动计算） ===
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 RESULTS_DIR = os.path.join(BASE_DIR, 'results', 'o3')
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
@@ -59,7 +61,7 @@ print(f"模型已冻结 | 参数量: {sum(p.numel() for p in model.parameters())
 @torch.no_grad()
 def encode_texts(texts, convert_to_tensor=True):
     """
-    批量编码文本，返回[CLS]位置embedding (256维)
+    批量编码文本，返回Mean Pooling 向量 (256维)
     """
     all_embeddings = []
     for i in range(0, len(texts), BATCH_SIZE):
@@ -73,13 +75,13 @@ def encode_texts(texts, convert_to_tensor=True):
         ).to(device)
         
         outputs = model(**inputs)
-        # 取[CLS]位置 hidden state: (batch_size, 256)
-        cls_emb = outputs.last_hidden_state[:, 0, :]
+        # 替换原来的 cls_emb 提取
+        mean_emb = outputs.last_hidden_state.mean(dim=1)  # (batch, 256)
         
         if convert_to_tensor:
-            all_embeddings.append(cls_emb)
+            all_embeddings.append(mean_emb)
         else:
-            all_embeddings.append(cls_emb.cpu().numpy())
+            all_embeddings.append(mean_emb.cpu().numpy())
     
     if convert_to_tensor:
         return torch.cat(all_embeddings, dim=0)

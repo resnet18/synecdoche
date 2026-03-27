@@ -4,7 +4,7 @@ B6 Ablation: RoBERTa-large SimCSE 原始 vs 脱敏一致性检验
 """
 import os
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
-
+os.environ['HF_HOME'] = os.path.expanduser('~/.cache/huggingface')  # 确保缓存路径
 import pandas as pd
 import numpy as np
 import torch
