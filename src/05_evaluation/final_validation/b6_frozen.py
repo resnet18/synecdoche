@@ -1,0 +1,94 @@
+"""
+B6_frozen: RoBERTa-large 零样本 (直接取预训练embedding，无微调)
+- 最终测试集推理版本：直接加载预计算锚点，零训练
+"""
+import os
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
+os.environ['HF_HUB_OFFLINE'] = '0'
+from sentence_transformers import SentenceTransformer
+import pandas as pd
+import numpy as np
+import torch.nn.functional as F
+import torch
+
+# === 模型参数 ===
+MODEL_NAME = 'hfl/chinese-roberta-wwm-ext-large'  # 355M参数纯MLM基座
+BATCH_SIZE = 16  # RoBERTa-large显存占用大，保持较小batch
+DEVICE = 'auto'
+
+# === 路径配置（4层dirname适配final_validation路径） ===
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+# 输入：预实验计算好的中心向量（只读）
+PRETRAIN_DIR = os.path.join(BASE_DIR, 'results', 'b6_frozen')
+CENTER_PATH = os.path.join(PRETRAIN_DIR, 'center_vector.npy')
+
+# 输入：最终测试集（210句完整测试集）
+TEST_PATH = os.path.join(BASE_DIR, 'data', 'test', 'test_full.csv')
+
+# 输出：最终验证结果目录
+OUTPUT_DIR = os.path.join(BASE_DIR, 'results', 'final_validation', 'b6_frozen')
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+OUTPUT_PRED = os.path.join(OUTPUT_DIR, 'predictions.csv')
+
+print("=== B6 RoBERTa-large零样本基线 - 最终测试集推理 ===")
+
+# 1. 设备检查
+if DEVICE == 'auto':
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+else:
+    device = DEVICE
+
+print(f"使用设备: {device}")
+if device == "cuda":
+    print(f"显卡: {torch.cuda.get_device_name(0)}")
+    print(f"显存: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+
+# 2. 加载模型（零样本，无微调）
+print(f"加载模型: {MODEL_NAME}")
+print("注意：纯MLM预训练基座，无句子级微调")
+model = SentenceTransformer(MODEL_NAME)
+model.to(device)
+
+# 3. 加载预计算的风格锚点（中心向量）
+print(f"加载预计算中心向量: {CENTER_PATH}")
+center = np.load(CENTER_PATH)
+center_tensor = torch.from_numpy(center).to(device)
+print(f"锚点向量维度: {center.shape[0]}")
+
+# 4. 读取最终测试集（210句，无需读取train/val）
+test_df = pd.read_csv(TEST_PATH)
+test_texts = test_df['text'].astype(str).tolist()
+print(f"测试集规模: {len(test_texts)}句")
+
+# 5. 测试集batch推理（计算与锚点的偏离度）
+print("编码测试集...")
+test_embs = model.encode(
+    test_texts,
+    convert_to_tensor=True,
+    device=device,
+    batch_size=BATCH_SIZE,
+    show_progress_bar=True
+)
+
+# 计算余弦相似度
+sims = F.cosine_similarity(test_embs, center_tensor.unsqueeze(0), dim=1)
+similarities = sims.cpu().numpy()
+
+# 映射到0-10分（与项目其他基线保持一致）
+# 原预实验: (sim + 1) / 2 * 100 -> 0-100
+# 现统一为: (sim + 1) / 2 * 10 -> 0-10
+scores = (similarities + 1) / 2 * 10
+
+# 6. 保存结果（等待人类基准对齐）
+results = pd.DataFrame({
+    'text_id': test_df.get('text_id', range(len(test_texts))),
+    'text': test_texts,
+    'b6_frozen_score': scores,
+    'cosine_sim_raw': similarities  # 保留原始[-1,1]范围
+})
+results.to_csv(OUTPUT_PRED, index=False, encoding='utf-8-sig')
+
+print(f"\n结果已保存: {OUTPUT_PRED}")
+print(f"分数统计: min={scores.min():.2f}, max={scores.max():.2f}, mean={scores.mean():.2f}, std={scores.std():.2f}")
+print(f"待人类基准打分完成后，合并计算Spearman相关性")
