@@ -2,12 +2,15 @@
 B5: MiniLM 零样本 (直接取预训练embedding，无微调)
 - 最终测试集推理版本：直接加载预计算锚点，零训练
 """
+
+import os
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'  # 第一行！
+os.environ['HF_HUB_OFFLINE'] = '0'  # 允许联网，但走镜像
 from sentence_transformers import SentenceTransformer
 import pandas as pd
 import numpy as np
 import torch.nn.functional as F
 import torch
-import os
 
 # === 模型参数 ===
 MODEL_NAME = 'sentence-transformers/all-MiniLM-L6-v2'
