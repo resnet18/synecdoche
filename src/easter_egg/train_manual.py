@@ -17,7 +17,7 @@ EARLY_STOPPING_PATIENCE = 3
 EARLY_STOPPING_MIN_DELTA = 0.001
 # ====================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data" / "final"
 OUTPUT_DIR = PROJECT_ROOT / "results" / "o2"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
