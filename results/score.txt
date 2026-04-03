@@ -1,4 +1,4 @@
-O1 min=0.00, max=92.12, mean=67.72
+O1 min=0.00, max=87.01, mean=64.23
 O2 min=48.13, max=74.91, mean=63.30
 O3 min=59.84, max=99.34, mean=92.77
 O2p min=75.74, max=81.68, mean=78.97
