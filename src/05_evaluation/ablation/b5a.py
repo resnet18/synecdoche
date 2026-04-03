@@ -1,9 +1,12 @@
+import os
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'  # 国内镜像
+os.environ['HF_HOME'] = os.path.expanduser('~/.cache/huggingface')  # 确保缓存路径
+
 import pandas as pd
 import numpy as np
 from scipy.stats import spearmanr
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
-import os
 
 # ========== 路径 ===========
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
