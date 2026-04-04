@@ -24,6 +24,7 @@ PRETRAINED_URL = "https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/cc.zh.30
 PRETRAINED_FILENAME = "cc.zh.300.vec.gz"
 MODEL_DIR = os.path.join(PROJECT_ROOT, 'models')
 PRETRAINED_PATH = os.path.join(MODEL_DIR, PRETRAINED_FILENAME)
+PRETRAINED_BIN = os.path.join(MODEL_DIR, "cc.zh.300.bin")  # 二进制缓存路径
 
 def download_file(url, dest_path, chunk_size=8192*1024):
     if os.path.exists(dest_path):
@@ -67,8 +68,21 @@ test_texts = df_test['text'].astype(str).tolist()
 print(f"加载训练语料: {len(all_train_texts)} 句 | 原始测试集: {len(test_texts)} 句")
 
 # ========== 加载预训练模型并重建中心向量 ===========
+# 确保二进制格式存在（首次转换后后续秒开）
+if not os.path.exists(PRETRAINED_BIN) and os.path.exists(PRETRAINED_PATH):
+    print("首次运行：转换文本格式为二进制（约2-5分钟，以后秒开）...")
+    tmp_model = KeyedVectors.load_word2vec_format(PRETRAINED_PATH, binary=False)
+    tmp_model.save_word2vec_format(PRETRAINED_BIN, binary=True)
+    print(f"转换完成：{PRETRAINED_BIN}")
+    del tmp_model
 print(f"加载预训练模型: {PRETRAINED_PATH}")
-model = KeyedVectors.load_word2vec_format(PRETRAINED_PATH, binary=False)
+# 优先加载二进制（快），回退到.gz（兼容）
+if os.path.exists(PRETRAINED_BIN):
+    model = KeyedVectors.load_word2vec_format(PRETRAINED_BIN, binary=True)
+    print(f"加载二进制模型（秒开）: {PRETRAINED_BIN}")
+else:
+    model = KeyedVectors.load_word2vec_format(PRETRAINED_PATH, binary=False)
+    print(f"加载文本模型（慢）: {PRETRAINED_PATH}")
 vec_size = model.vector_size
 print(f"词向量维度: {vec_size}")
 
@@ -146,10 +160,10 @@ print(f"原文OOV率估计: {np.mean([np.linalg.norm(v) < 1e-6 for v in test_vec
 print(f"脱敏OOV率估计: 预计>50%（占位符全为OOV）")
 
 if rho > 0.7:
-    print("强一致：预训练词向量对专有词不敏感（意外）")
+    print("强一致：预训练词向量对专有词不敏感")
 elif rho > 0.3:
     print("中等一致：部分词汇泄漏")
 else:
-    print("弱一致：严重词汇鸿沟（预期结果）")
+    print("弱一致：严重词汇泄漏")
 
 print("=== 完成 ===")

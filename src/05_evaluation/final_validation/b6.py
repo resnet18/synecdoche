@@ -10,6 +10,12 @@ from sentence_transformers import SentenceTransformer
 import torch.nn.functional as F
 import os
 
+# ---------- 显存限制代码 ----------
+if os.getenv('CUDA_MEMORY_FRACTION'):
+    torch.cuda.set_per_process_memory_fraction(float(os.getenv('CUDA_MEMORY_FRACTION')))
+    print(f"显存限制: {float(os.getenv('CUDA_MEMORY_FRACTION'))*100:.0f}%")
+# -------------------------------------
+
 # ==================== 参数配置区 ====================
 # 路径配置（4层dirname适配final_validation路径）
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -111,3 +117,19 @@ def predict():
 
 if __name__ == "__main__":
     predict()
+
+# ========== 显存报告（加在这里）==========
+import torch
+from pathlib import Path
+import os
+
+if torch.cuda.is_available():
+    peak_mb = torch.cuda.max_memory_allocated() / 1024**2
+    # 从环境变量获取路径（父脚本传入），或默认当前目录
+    peak_file = Path(os.environ.get('PEAK_FILE_PATH', '_gpu_peak_temp.txt'))
+    peak_file.write_text(str(peak_mb))
+    print(f"[GPU] 峰值显存: {peak_mb:.0f} MB")
+else:
+    # 即使没有GPU，也写入0，避免父脚本读取失败
+    peak_file = Path(os.environ.get('PEAK_FILE_PATH', '_gpu_peak_temp.txt'))
+    peak_file.write_text("0")

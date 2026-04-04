@@ -15,6 +15,12 @@ import torch
 import pandas as pd
 import re
 
+# ---------- 显存限制代码 ----------
+if os.getenv('CUDA_MEMORY_FRACTION'):
+    torch.cuda.set_per_process_memory_fraction(float(os.getenv('CUDA_MEMORY_FRACTION')))
+    print(f"显存限制: {float(os.getenv('CUDA_MEMORY_FRACTION'))*100:.0f}%")
+# -------------------------------------
+
 # ========== 配置 ==========
 MODEL_NAME = "Qwen/Qwen3-4B"  # INT4量化本地模型
 NUM_EXAMPLES = 15             # 固定参考文本数量
@@ -118,3 +124,19 @@ results.to_csv(OUTPUT_PATH, index=False, encoding='utf-8-sig')
 print(f"\n✓ 结果已保存: {OUTPUT_PATH}")
 print(f"统计: min={min(scores):.2f}, max={max(scores):.2f}, mean={sum(scores)/len(scores):.2f}, std={pd.Series(scores).std():.2f}")
 print("待人类基准打分完成后，合并计算Spearman相关性")
+
+# ========== 显存报告（加在这里）==========
+import torch
+from pathlib import Path
+import os
+
+if torch.cuda.is_available():
+    peak_mb = torch.cuda.max_memory_allocated() / 1024**2
+    # 从环境变量获取路径（父脚本传入），或默认当前目录
+    peak_file = Path(os.environ.get('PEAK_FILE_PATH', '_gpu_peak_temp.txt'))
+    peak_file.write_text(str(peak_mb))
+    print(f"[GPU] 峰值显存: {peak_mb:.0f} MB")
+else:
+    # 即使没有GPU，也写入0，避免父脚本读取失败
+    peak_file = Path(os.environ.get('PEAK_FILE_PATH', '_gpu_peak_temp.txt'))
+    peak_file.write_text("0")

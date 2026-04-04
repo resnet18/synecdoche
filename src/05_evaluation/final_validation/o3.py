@@ -13,6 +13,12 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+# ---------- 显存限制代码 ----------
+if os.getenv('CUDA_MEMORY_FRACTION'):
+    torch.cuda.set_per_process_memory_fraction(float(os.getenv('CUDA_MEMORY_FRACTION')))
+    print(f"显存限制: {float(os.getenv('CUDA_MEMORY_FRACTION'))*100:.0f}%")
+# -------------------------------------
+
 # === 路径配置（4层dirname适配final_validation路径） ===
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -123,3 +129,17 @@ results.to_csv(OUTPUT_PRED, index=False, encoding='utf-8-sig')
 print(f"\n结果已保存: {OUTPUT_PRED}")
 print(f"分数统计: min={scores.min():.2f}, max={scores.max():.2f}, mean={scores.mean():.2f}, std={scores.std():.2f}")
 print(f"待人类基准打分完成后，合并计算Spearman相关性")
+
+# ========== 显存报告 ==========
+import torch
+from pathlib import Path
+import os
+
+if torch.cuda.is_available():
+    peak_mb = torch.cuda.max_memory_allocated() / 1024**2
+    peak_file = Path(os.environ.get('PEAK_FILE_PATH', '_gpu_peak_temp.txt'))
+    peak_file.write_text(str(peak_mb))
+    print(f"[GPU] 峰值显存: {peak_mb:.0f} MB")
+else:
+    peak_file = Path(os.environ.get('PEAK_FILE_PATH', '_gpu_peak_temp.txt'))
+    peak_file.write_text("0")

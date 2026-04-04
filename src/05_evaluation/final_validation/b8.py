@@ -15,6 +15,12 @@ import torch
 import pandas as pd
 import re
 
+# ---------- 显存限制代码 ----------
+if os.getenv('CUDA_MEMORY_FRACTION'):
+    torch.cuda.set_per_process_memory_fraction(float(os.getenv('CUDA_MEMORY_FRACTION')))
+    print(f"显存限制: {float(os.getenv('CUDA_MEMORY_FRACTION'))*100:.0f}%")
+# -------------------------------------
+
 # ========== 配置 ==========
 MODEL_NAME = "Qwen/Qwen3-8B"  # 8B（16G显存临界，支持OOM降级）
 MAX_LENGTH = 2048
@@ -176,3 +182,19 @@ if final_num < TARGET_EXAMPLES:
     print(f"    这会削弱风格建模能力，但保证了物理可执行性")
 
 print("待人类基准打分完成后，合并计算Spearman相关性")
+
+# ========== 显存报告（加在这里）==========
+import torch
+from pathlib import Path
+import os
+
+if torch.cuda.is_available():
+    peak_mb = torch.cuda.max_memory_allocated() / 1024**2
+    # 从环境变量获取路径（父脚本传入），或默认当前目录
+    peak_file = Path(os.environ.get('PEAK_FILE_PATH', '_gpu_peak_temp.txt'))
+    peak_file.write_text(str(peak_mb))
+    print(f"[GPU] 峰值显存: {peak_mb:.0f} MB")
+else:
+    # 即使没有GPU，也写入0，避免父脚本读取失败
+    peak_file = Path(os.environ.get('PEAK_FILE_PATH', '_gpu_peak_temp.txt'))
+    peak_file.write_text("0")

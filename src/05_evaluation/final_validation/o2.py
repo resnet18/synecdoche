@@ -11,6 +11,12 @@ from pathlib import Path
 import torch.nn.functional as F
 import os
 
+# ---------- 显存限制代码 ----------
+if os.getenv('CUDA_MEMORY_FRACTION'):
+    torch.cuda.set_per_process_memory_fraction(float(os.getenv('CUDA_MEMORY_FRACTION')))
+    print(f"显存限制: {float(os.getenv('CUDA_MEMORY_FRACTION'))*100:.0f}%")
+# -------------------------------------
+
 # ==================== 参数配置区 ====================
 # 路径配置（4层parent适配final_validation路径）
 BASE_DIR = Path(__file__).resolve().parents[3]
@@ -105,3 +111,17 @@ def predict():
 
 if __name__ == "__main__":
     predict()
+
+# ========== 显存报告 ==========
+import torch
+from pathlib import Path
+import os
+
+if torch.cuda.is_available():
+    peak_mb = torch.cuda.max_memory_allocated() / 1024**2
+    peak_file = Path(os.environ.get('PEAK_FILE_PATH', '_gpu_peak_temp.txt'))
+    peak_file.write_text(str(peak_mb))
+    print(f"[GPU] 峰值显存: {peak_mb:.0f} MB")
+else:
+    peak_file = Path(os.environ.get('PEAK_FILE_PATH', '_gpu_peak_temp.txt'))
+    peak_file.write_text("0")

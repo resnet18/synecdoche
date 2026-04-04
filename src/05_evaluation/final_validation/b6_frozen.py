@@ -11,6 +11,12 @@ import numpy as np
 import torch.nn.functional as F
 import torch
 
+# ---------- 显存限制代码 ----------
+if os.getenv('CUDA_MEMORY_FRACTION'):
+    torch.cuda.set_per_process_memory_fraction(float(os.getenv('CUDA_MEMORY_FRACTION')))
+    print(f"显存限制: {float(os.getenv('CUDA_MEMORY_FRACTION'))*100:.0f}%")
+# -------------------------------------
+
 # === 模型参数 ===
 MODEL_NAME = 'hfl/chinese-roberta-wwm-ext-large'  # 355M参数纯MLM基座
 BATCH_SIZE = 16  # RoBERTa-large显存占用大，保持较小batch
@@ -92,3 +98,19 @@ results.to_csv(OUTPUT_PRED, index=False, encoding='utf-8-sig')
 print(f"\n结果已保存: {OUTPUT_PRED}")
 print(f"分数统计: min={scores.min():.2f}, max={scores.max():.2f}, mean={scores.mean():.2f}, std={scores.std():.2f}")
 print(f"待人类基准打分完成后，合并计算Spearman相关性")
+
+# ========== 显存报告（加在这里）==========
+import torch
+from pathlib import Path
+import os
+
+if torch.cuda.is_available():
+    peak_mb = torch.cuda.max_memory_allocated() / 1024**2
+    # 从环境变量获取路径（父脚本传入），或默认当前目录
+    peak_file = Path(os.environ.get('PEAK_FILE_PATH', '_gpu_peak_temp.txt'))
+    peak_file.write_text(str(peak_mb))
+    print(f"[GPU] 峰值显存: {peak_mb:.0f} MB")
+else:
+    # 即使没有GPU，也写入0，避免父脚本读取失败
+    peak_file = Path(os.environ.get('PEAK_FILE_PATH', '_gpu_peak_temp.txt'))
+    peak_file.write_text("0")

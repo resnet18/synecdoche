@@ -26,6 +26,7 @@ OUTPUT_CENTER = os.path.join(RESULTS_DIR, 'center_vector.npy')
 PRETRAINED_URL = "https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/cc.zh.300.vec.gz"
 PRETRAINED_FILENAME = "cc.zh.300.vec.gz"
 PRETRAINED_PATH = os.path.join(MODEL_DIR, PRETRAINED_FILENAME)
+PRETRAINED_BIN = os.path.join(MODEL_DIR, "cc.zh.300.bin")  # 二进制缓存
 
 def download_file(url, dest_path, chunk_size=8192*1024):
     """流式下载大文件，带进度显示"""
@@ -87,9 +88,22 @@ train_tokenized = tokenize(all_texts)
 test_tokenized = tokenize(test_texts)
 
 # 4. 加载预训练词向量（关键：直接读取.gz压缩文件，无需解压省空间）
+# 确保二进制格式存在（首次转换后后续秒开）
+if not os.path.exists(PRETRAINED_BIN):
+    print("首次运行：转换文本格式为二进制（约2-5分钟，以后秒开）...")
+    # 直接从.gz加载（兼容原逻辑）
+    tmp_model = KeyedVectors.load_word2vec_format(PRETRAINED_PATH, binary=False)
+    tmp_model.save_word2vec_format(PRETRAINED_BIN, binary=True)
+    print(f"转换完成：{PRETRAINED_BIN}")
+    del tmp_model  # 释放内存，下面重新加载二进制版
 print(f"加载预训练词向量（可能需1-2分钟初始化）: {PRETRAINED_PATH}")
-# gensim支持直接读取.vec.gz格式，自动解压到内存，节省磁盘空间
-model = KeyedVectors.load_word2vec_format(PRETRAINED_PATH, binary=False)
+# 优先加载二进制（快），回退到.gz（兼容）
+if os.path.exists(PRETRAINED_BIN):
+    model = KeyedVectors.load_word2vec_format(PRETRAINED_BIN, binary=True)
+    print(f"加载二进制模型（秒开）: {PRETRAINED_BIN}")
+else:
+    model = KeyedVectors.load_word2vec_format(PRETRAINED_PATH, binary=False)
+    print(f"加载文本模型（慢）: {PRETRAINED_PATH}")
 
 VECTOR_SIZE = model.vector_size
 print(f"词向量维度: {VECTOR_SIZE}, 词表大小: {len(model.key_to_index):,}")
