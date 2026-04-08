@@ -71,7 +71,7 @@ B8 Qwen3-8B 同上
 
 组分消融版本：
 
-B2 可以视为O1的消融版
+B2 可以视为O1消融
 
 B4-pretrained 使用预训练的词向量（fastText）
 
