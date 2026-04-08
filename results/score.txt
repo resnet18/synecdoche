@@ -11,7 +11,8 @@ B4P min=70.18, max=94.92, mean=85.47
 B5 min=76.23, max=94.79, mean=87.79
 B6 min=65.23, max=77.22, mean=72.77
 B6f min=89.01, max=97.10, mean=94.94
-B7 min=75.00, max=85.00, mean=84.14
+B7_int4 min=75.00, max=85.00, mean=84.14
+B7_fp16 min=85.00, max=95.00, mean=85.14
 B8 min=50.00, max=85.00, mean=74.71
 B9
 B10

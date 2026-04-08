@@ -66,8 +66,6 @@ def load_qwen_model(model_name_or_path, num_bits=4, auto_download=True):
     else:
         bnb_config = None
 
-
-
     """
     加载 Qwen 模型
     """
@@ -98,17 +96,7 @@ def load_qwen_model(model_name_or_path, num_bits=4, auto_download=True):
             is_local = True
         else:
             raise RuntimeError(f"模型未找到且 auto_download=False: {model_name_or_path}")
-    
-    # INT4 配置
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=(num_bits == 4),
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.float16,
-        bnb_4bit_use_double_quant=True
-    ) if num_bits == 4 else None
-    
 
-    
     # 加载（强制本地，不联网）
     print(f"正在加载 tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(

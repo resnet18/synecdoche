@@ -22,10 +22,12 @@ if torch.cuda.is_available():
     if total_gb > 8.5:  # 只在 16G 卡上限制
         torch.cuda.set_per_process_memory_fraction(8.0 / total_gb)
         print(f"[VRAM Limit] Hard cap 8GB on {total_gb:.1f}GB device")
+            # 重置峰值统计，以便准确记录
+    torch.cuda.reset_peak_memory_stats()
 # -------------------------------------
 
 # ========== 配置 ==========
-MODEL_NAME = "Qwen/Qwen3-4B"  # INT4量化本地模型
+MODEL_NAME = "Qwen/Qwen3-4B"  # FP16（非量化）
 NUM_EXAMPLES = 15             # 固定参考文本数量
 MAX_LENGTH = 2048
 
@@ -37,7 +39,7 @@ REFERENCE_PATH = os.path.join(BASE_DIR, 'data', 'final', 'reference.csv')
 TEST_PATH = os.path.join(BASE_DIR, 'data', 'test', 'test_full.csv')
 
 # 输出：最终验证结果目录
-RESULTS_DIR = os.path.join(BASE_DIR, 'results', 'final_validation', 'b7')
+RESULTS_DIR = os.path.join(BASE_DIR, 'results', 'final_validation', 'b7_fp16')
 os.makedirs(RESULTS_DIR, exist_ok=True)
 OUTPUT_PATH = os.path.join(RESULTS_DIR, 'predictions.csv')
 
@@ -45,7 +47,7 @@ print("=== B7: Qwen3-4B - 最终测试集推理 ===")
 
 # ========== 加载模型 ==========
 print(f"加载模型: {MODEL_NAME}...")
-model, tokenizer = load_qwen_model(MODEL_NAME, num_bits=4, auto_download=True)
+model, tokenizer = load_qwen_model(MODEL_NAME, num_bits=None, auto_download=True)
 print("✓ 模型加载完成")
 
 # ========== 加载数据 ==========

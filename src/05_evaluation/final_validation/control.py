@@ -45,13 +45,14 @@ PIPELINE = [
     {"name": "B4P", "script": "b4_pretrained.py", "type": "stats",
      "skip_if_missing": "models/cc.zh.300.vec.gz"},
     {"name": "O1", "script": "o1.py", "type": "stats"},
-    {"name": "B5", "script": "b5.py", "type": "embedding", "hf_mirror": True},
+    {"name": "B5", "script": "b5.py", "type": "embedding"},
     {"name": "B6f", "script": "b6_frozen.py", "type": "embedding"},
     {"name": "O3", "script": "o3.py", "type": "embedding"},
     {"name": "O2", "script": "o2.py", "type": "contrastive"},
     {"name": "O2p", "script": "o2_probe.py", "type": "contrastive"},
     {"name": "B6", "script": "b6.py", "type": "contrastive"},
-    {"name": "B7", "script": "b7.py", "type": "llm", "output_dir": "b7"},
+    {"name": "B7_int4", "script": "b7_int4.py", "type": "llm", "output_dir": "b7_int4"},
+    {"name": "B7_fp16", "script": "b7_fp16.py", "type": "llm", "output_dir": "b7_fp16"},
     {"name": "B8", "script": "b8.py", "type": "llm", "output_dir": "b8"},
 ]
 
@@ -104,30 +105,22 @@ def run_stage(cfg, base_env):
     print(f"开始运行 {name} ({task_type})")
 
     run_env = base_env.copy()
-    # 强制子进程使用 UTF-8 输出，避免编码错误
     run_env['PYTHONIOENCODING'] = 'utf-8'
-    
-    # === 关键修复：传递显存报告文件路径 ===
     temp_peak_file = SCRIPT_DIR / "_gpu_peak_temp.txt"
     run_env['PEAK_FILE_PATH'] = str(temp_peak_file)
 
-    if cfg.get("hf_mirror"):
-        run_env['HF_ENDPOINT'] = 'https://hf-mirror.com'
-        run_env['HF_HUB_OFFLINE'] = '0'
-
-    # LLM 任务：移除显存限制环境变量
+    # LLM 任务：移除父进程限制（由子进程自行硬编码）
     if task_type == "llm" and 'CUDA_MEMORY_FRACTION' in run_env:
         del run_env['CUDA_MEMORY_FRACTION']
-        print("   (LLM任务：已移除 CUDA_MEMORY_FRACTION，让子进程自行管理显存)")
+        print("   (LLM任务：子进程自行管理显存)")
 
-    temp_peak_file = SCRIPT_DIR / "_gpu_peak_temp.txt"
     if temp_peak_file.exists():
         temp_peak_file.unlink()
 
     timeout = cfg.get("timeout", TIMEOUT_MAP.get(task_type, DEFAULT_TIMEOUT))
     t0 = time.time()
-
     log_file = SCRIPT_DIR / f"_subprocess_{name}.log"
+    
     try:
         with open(log_file, 'w', encoding='utf-8') as f_log:
             result = subprocess.run(
@@ -143,8 +136,7 @@ def run_stage(cfg, base_env):
             )
             f_log.write(result.stdout)
     except Exception as e:
-        # 如果写日志失败，仍继续处理
-        pass
+        return {"name": name, "status": "FAILED", "time": time.time()-t0, "error": str(e)}
 
     elapsed = time.time() - t0
     gpu_peak_mb = get_peak_memory_from_child()
@@ -153,69 +145,47 @@ def run_stage(cfg, base_env):
     if log_file.exists():
         child_output = log_file.read_text(encoding='utf-8', errors='replace')
 
+    # ===== 关键修复：严格区分成功/失败路径 =====
     if result.returncode != 0:
         print(f"失败 ({elapsed:.1f}s)")
-        lines = child_output.strip().split('\n')
-        for line in lines[-20:]:
-            print(f"   {line}")
-        if task_type == "llm":
-            print("提示：LLM 失败常见原因：显存不足、模型文件损坏、环境变量冲突")
-            print(f"完整日志已保存: {log_file}")
-        return {
-            "name": name,
-            "status": "FAILED",
-            "time": elapsed,
-            "error": child_output[-500:]
-        }
+        
+        # 检测 OOM（只在失败时）
+        is_oom = ("out of memory" in child_output.lower() or 
+                  "cuda out of memory" in child_output.lower())
+        if is_oom:
+            return {"name": name, "status": "OOM", "time": elapsed, "error": "out of memory"}
+        
+        # 普通失败
+        return {"name": name, "status": "FAILED", "time": elapsed, 
+                "error": child_output[-500:]}
 
-    # 查找预测文件
+    # 成功路径（查找预测文件）
     output_dir = cfg.get("output_dir", Path(script).stem)
-    pred_csv_candidate = RESULTS_ROOT / output_dir / "predictions.csv"
-    if pred_csv_candidate.exists():
-        pred_csv = pred_csv_candidate
-    else:
-        pred_csv_candidate2 = RESULTS_ROOT / name.lower() / "predictions.csv"
-        if pred_csv_candidate2.exists():
-            pred_csv = pred_csv_candidate2
-        else:
-            pred_csv = None
-
-    if not pred_csv:
-        all_preds = list(RESULTS_ROOT.glob("*/predictions.csv"))
-        relevant = [p for p in all_preds if output_dir in str(p) or name.lower() in str(p)]
-        if relevant:
-            pred_csv = max(relevant, key=lambda p: p.stat().st_mtime)
-            print(f"自动发现预测文件: {pred_csv} (可能与预期不符)")
-        elif all_preds:
-            print(f"发现其他任务的预测文件: {[p.parent.name for p in all_preds]}")
-            pred_csv = None
-
-    if pred_csv and pred_csv.exists():
+    pred_csv = RESULTS_ROOT / output_dir / "predictions.csv"
+    
+    if not pred_csv.exists():
+        # 尝试备选路径
+        alt_path = RESULTS_ROOT / name.lower() / "predictions.csv"
+        if alt_path.exists():
+            pred_csv = alt_path
+    
+    if pred_csv.exists():
         try:
             df = pd.read_csv(pred_csv)
-            score_col = next((col for col in df.columns if 'score' in col.lower()), df.columns[0])
+            score_col = next((c for c in df.columns if 'score' in c.lower()), df.columns[0])
             s = df[score_col]
-
             print(f"成功 ({elapsed:.1f}s, 峰值显存: {gpu_peak_mb:.0f} MB)")
             print(f"   min={s.min():.2f}, max={s.max():.2f}, mean={s.mean():.2f}, std={s.std():.2f}")
-
             if log_file.exists():
                 log_file.unlink()
-            return {
-                "name": name, "status": "OK", "time": elapsed, "gpu_mb": gpu_peak_mb,
-                "min": float(s.min()), "max": float(s.max()),
-                "mean": float(s.mean()), "std": float(s.std()), "samples": len(s)
-            }
+            return {"name": name, "status": "OK", "time": elapsed, "gpu_mb": gpu_peak_mb,
+                    "min": float(s.min()), "max": float(s.max()), 
+                    "mean": float(s.mean()), "std": float(s.std()), "samples": len(s)}
         except Exception as e:
-            print(f"读取预测文件失败: {e}")
             return {"name": name, "status": "NO_OUTPUT", "time": elapsed, "error": str(e)}
     else:
-        print(f"成功但未找到预测文件 (期望: {pred_csv_candidate})")
-        print(f"   子进程输出最后30行:")
-        for line in child_output.strip().split('\n')[-30:]:
-            print(f"   {line}")
-        print(f"   完整日志: {log_file}")
-        return {"name": name, "status": "NO_OUTPUT", "time": elapsed}
+        return {"name": name, "status": "NO_OUTPUT", "time": elapsed, 
+                "error": f"找不到预测文件: {pred_csv}"}
 
 def main():
     print("=" * 70)
@@ -260,6 +230,12 @@ def main():
                     f"time={r['time']:5.1f}s, gpu={r['gpu_mb']:.0f}MB")
             summary_lines.append(line)
             print(line)
+        
+        elif r["status"] == "OOM":
+            line = f"{r['name']:6s} [OOM] gpu=out of memory, time={r['time']:.1f}s"
+            summary_lines.append(line)
+            print(line)
+        
         else:
             status_str = f"{r['name']:6s} [{r['status']}]"
             if "error" in r:

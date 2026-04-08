@@ -15,13 +15,15 @@ import torch
 import pandas as pd
 import re
 
-# ---------- 显存限制代码（硬编码8G）----------
+# ---------- 显存限制代码（硬编码8G） ----------
 import torch
 if torch.cuda.is_available():
     total_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
     if total_gb > 8.5:  # 只在 16G 卡上限制
         torch.cuda.set_per_process_memory_fraction(8.0 / total_gb)
         print(f"[VRAM Limit] Hard cap 8GB on {total_gb:.1f}GB device")
+            # 重置峰值统计，以便准确记录
+    torch.cuda.reset_peak_memory_stats()
 # -------------------------------------
 
 # ========== 配置 ==========
@@ -50,7 +52,16 @@ try:
     print("✓ 模型加载完成")
 except Exception as e:
     print(f"模型加载失败: {e}")
-    exit()
+    sys.exit(1)
+
+# 在 model, tokenizer = load_qwen_model(...) 之后
+if hasattr(model, 'model'):
+    layer = model.model.layers[0].self_attn.q_proj
+    print(f"第一线性层类型: {type(layer)}")
+    if 'Linear4bit' in str(type(layer)):
+        print("✓ INT4 量化成功")
+    else:
+        print("✗ 量化失败，仍为 FP16")
 
 # ========== 加载数据 ==========
 if not os.path.exists(REFERENCE_PATH):
@@ -70,7 +81,7 @@ print(f"✓ 参考库: {len(ref_df)} 句（将取前N句，N∈{15,5,0}）")
 def run_with_examples(num_examples):
     """
     尝试用指定数量的参考句进行推理
-    返回: (scores_list, outputs_list, success_bool)
+    返回: (scores_list, outputs_list, success_bool, oom_happened)
     """
     if num_examples > 0:
         reference_texts = ref_df['text'].head(num_examples).tolist()
@@ -134,10 +145,9 @@ def run_with_examples(num_examples):
                 
         except RuntimeError as e:
             if "out of memory" in str(e).lower() or "CUDA" in str(e):
-                # OOM，清理显存并返回失败
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
-                return None, None, False
+                return None, None, False, True   # <--- 修改：返回时增加 True 表示本尝试发生了OOM
             raise e
     
     return scores, raw_outputs, True
@@ -147,10 +157,14 @@ strategies = [15, 5, 0]
 final_scores = None
 final_outputs = None
 final_num = 0
+oom_global = False
 
 for strategy in strategies:
     print(f"\n尝试 {strategy} 句参考模式...")
-    scores, outputs, success = run_with_examples(strategy)
+    scores, outputs, success, oom_local = run_with_examples(strategy)   # <--- 修改：接收4个返回值
+
+    if oom_local:
+        oom_global = True   # <--- 新增：标记发生过OOM
     
     if success:
         final_scores = scores
@@ -159,12 +173,12 @@ for strategy in strategies:
         print(f"✓ {strategy} 句模式成功")
         break
     else:
-        print(f"{strategy} 句OOM，清理显存并降级...")
+        print(f"{strategy} 句失败，清理显存并降级...")
         continue
 
 if final_scores is None:
     print("所有模式均失败（包括纯Zero-shot）")
-    exit()
+    sys.exit(1)
 
 # ========== 保存结果（等待人类基准对齐） ==========
 results = pd.DataFrame({
@@ -186,7 +200,7 @@ if final_num < TARGET_EXAMPLES:
 
 print("待人类基准打分完成后，合并计算Spearman相关性")
 
-# ========== 显存报告（加在这里）==========
+# ========== 显存报告 ==========
 import torch
 from pathlib import Path
 import os
@@ -197,7 +211,9 @@ if torch.cuda.is_available():
     peak_file = Path(os.environ.get('PEAK_FILE_PATH', '_gpu_peak_temp.txt'))
     peak_file.write_text(str(peak_mb))
     print(f"[GPU] 峰值显存: {peak_mb:.0f} MB")
+
+if oom_global:
+    print("警告：推理过程中发生过OOM，但降级后成功")
+    sys.exit(2)   # 自定义退出码2，表示降级成功但曾OOM
 else:
-    # 即使没有GPU，也写入0，避免父脚本读取失败
-    peak_file = Path(os.environ.get('PEAK_FILE_PATH', '_gpu_peak_temp.txt'))
-    peak_file.write_text("0")
+    sys.exit(0)   # 完全成功，从未OOM

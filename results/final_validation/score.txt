@@ -1,23 +1,24 @@
 Final Validation Summary
-时间: 2026-04-04 21:21:32
-总耗时: 7.6 分钟
+时间: 2026-04-08 22:21:03
+总耗时: 5.0 分钟
 限制显存: 8 GB (LLM除外)
 ------------------------------------------------------------
-B0     min=  0.00, max=  7.60, mean=  1.17, std=  2.14, time=  3.0s, gpu=0MB
-B1     min=  0.00, max=  4.70, mean=  0.02, std=  0.32, time=  3.0s, gpu=0MB
-B2     min=  0.00, max=  9.80, mean=  8.50, std=  1.33, time=  2.9s, gpu=0MB
-B3     min=  0.00, max=  7.77, mean=  1.12, std=  2.07, time=  2.9s, gpu=0MB
-B4     min=  7.30, max=  9.93, mean=  9.50, std=  0.36, time=  3.4s, gpu=0MB
-B4P    min=  6.55, max=  9.59, mean=  8.58, std=  0.66, time= 11.5s, gpu=0MB
-O1     min=  0.00, max=  9.06, mean=  7.14, std=  1.54, time=  1.8s, gpu=0MB
-B5     min=  7.62, max=  9.48, mean=  8.72, std=  0.37, time= 17.5s, gpu=172MB
-B6f    min=  8.72, max=  9.71, mean=  9.44, std=  0.18, time= 16.8s, gpu=1346MB
-O3     min=  5.61, max=  9.93, mean=  9.42, std=  0.94, time= 11.1s, gpu=117MB
-O2     min=  4.81, max=  7.49, mean=  6.48, std=  0.51, time=  6.5s, gpu=172MB
-O2p    min=  7.31, max=  8.32, mean=  7.88, std=  0.19, time=  6.5s, gpu=172MB
-B6     min=  6.52, max=  7.85, mean=  7.32, std=  0.25, time=  7.6s, gpu=1346MB
-B7     min=  0.00, max=  8.50, mean=  8.42, std=  0.62, time=146.5s, gpu=7467MB
-B8     min=  0.00, max=  8.50, mean=  7.04, std=  1.13, time=214.0s, gpu=15118MB
+B0     min=  0.00, max=  7.60, mean=  1.17, std=  2.14, time=  2.5s, gpu=0MB
+B1     min=  0.00, max=  4.70, mean=  0.02, std=  0.32, time=  2.5s, gpu=0MB
+B2     min=  0.00, max=  9.80, mean=  8.50, std=  1.33, time=  2.5s, gpu=0MB
+B3     min=  0.00, max=  7.77, mean=  1.12, std=  2.07, time=  2.5s, gpu=0MB
+B4     min=  7.30, max=  9.93, mean=  9.50, std=  0.36, time=  3.0s, gpu=0MB
+B4P    min=  6.55, max=  9.59, mean=  8.58, std=  0.66, time= 10.5s, gpu=0MB
+O1     min=  0.00, max=  9.06, mean=  7.14, std=  1.54, time=  1.5s, gpu=0MB
+B5     min=  7.62, max=  9.48, mean=  8.72, std=  0.37, time= 15.2s, gpu=172MB
+B6f    min=  8.72, max=  9.71, mean=  9.44, std=  0.18, time= 12.3s, gpu=1346MB
+O3     min=  5.61, max=  9.93, mean=  9.42, std=  0.94, time=  9.6s, gpu=117MB
+O2     min=  4.81, max=  7.49, mean=  6.48, std=  0.51, time=  6.1s, gpu=172MB
+O2p    min=  7.31, max=  8.32, mean=  7.88, std=  0.19, time=  6.1s, gpu=172MB
+B6     min=  6.52, max=  7.85, mean=  7.32, std=  0.25, time=  7.2s, gpu=1346MB
+B7_int4 min=  0.00, max=  8.50, mean=  8.42, std=  0.62, time=126.9s, gpu=7469MB
+B7_fp16 min=  0.00, max=  9.50, mean=  8.45, std=  0.64, time= 77.3s, gpu=7873MB
+B8     [OOM] gpu=out of memory, time=11.9s
 ------------------------------------------------------------
-成功: 15/15
+成功: 15/16
 ======================================================================

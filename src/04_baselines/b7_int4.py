@@ -1,5 +1,5 @@
 """
-B7: Qwen3-4B (FP16) - 主实验脚本
+B7: Qwen3-4B (INT4) - 预实验
 策略：读取固定15句参考文本 → 归纳风格 → 打分
 """
 
@@ -21,7 +21,7 @@ NUM_EXAMPLES = 15
 MAX_LENGTH = 2048
 
 # ========== 路径 ==========
-RESULTS_DIR = os.path.join(BASE_DIR, 'results', 'b7')
+RESULTS_DIR = os.path.join(BASE_DIR, 'results', 'b7_int4')
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 REFERENCE_PATH = os.path.join(BASE_DIR, 'data', 'final', 'reference.csv')
@@ -35,6 +35,15 @@ print(f"加载模型: {MODEL_NAME}...")
 # auto_download=True 会自动从 ModelScope 下载到 models/Qwen--Qwen3-4B/
 model, tokenizer = load_qwen_model(MODEL_NAME, num_bits=4, auto_download=True)
 print("✓ 模型加载完成")
+
+# 在 model, tokenizer = load_qwen_model(...) 之后
+if hasattr(model, 'model'):
+    layer = model.model.layers[0].self_attn.q_proj
+    print(f"第一线性层类型: {type(layer)}")
+    if 'Linear4bit' in str(type(layer)):
+        print("✓ INT4 量化成功")
+    else:
+        print("✗ 量化失败，仍为 FP16")
 
 # ========== 加载数据 ==========
 if not os.path.exists(REFERENCE_PATH):

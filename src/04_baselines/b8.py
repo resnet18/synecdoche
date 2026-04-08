@@ -27,7 +27,7 @@ REFERENCE_PATH = os.path.join(BASE_DIR, 'data', 'final', 'reference.csv')
 TEST_PATH = os.path.join(BASE_DIR, 'data', 'test', 'test_positive.csv')
 OUTPUT_PATH = os.path.join(RESULTS_DIR, 'predictions.csv')
 
-print("=== B8: Qwen3-8B (主实验 / 支持OOM降级) ===")
+print("=== B8: Qwen3-8B (预实验 / 支持OOM降级) ===")
 
 # ========== 加载模型（支持自动下载到项目目录） ==========
 print(f"加载模型: {MODEL_NAME}...")
@@ -38,6 +38,15 @@ try:
 except Exception as e:
     print(f"模型加载失败: {e}")
     exit()
+
+# 在 model, tokenizer = load_qwen_model(...) 之后
+if hasattr(model, 'model'):
+    layer = model.model.layers[0].self_attn.q_proj
+    print(f"第一线性层类型: {type(layer)}")
+    if 'Linear4bit' in str(type(layer)):
+        print("✓ INT4 量化成功")
+    else:
+        print("✗ 量化失败，仍为 FP16")
 
 # ========== 加载数据（固定reference） ==========
 if not os.path.exists(REFERENCE_PATH):

@@ -27,7 +27,7 @@ NUM_EXAMPLES = 15
 MAX_LENGTH = 2048
 
 # ========== 路径 ==========
-RESULTS_DIR = os.path.join(BASE_DIR, 'results', 'b7')
+RESULTS_DIR = os.path.join(BASE_DIR, 'results', 'b7_fp16')
 ABLATION_DIR = os.path.join(BASE_DIR, 'results', 'ablation')
 os.makedirs(ABLATION_DIR, exist_ok=True)
 
@@ -44,11 +44,11 @@ if not os.path.exists(REFERENCE_PATH):
 if not os.path.exists(TEST_ORIG_PATH):
     raise FileNotFoundError(f"原始测试文件不存在: {TEST_ORIG_PATH}")
 if not os.path.exists(DES_PATH):
-    raise FileNotFoundError(f"脱敏结果不存在: {DES_PATH}\n请先运行 b7.py 生成脱敏版本预测")
+    raise FileNotFoundError(f"脱敏结果不存在: {DES_PATH}\n请先运行 b7_fp16.py 生成脱敏版本预测")
 
 # ========== 加载模型 ==========
-print(f"加载模型: {MODEL_NAME} (INT4)...")
-model, tokenizer = load_qwen_model(MODEL_NAME, num_bits=4, auto_download=True)
+print(f"加载模型: {MODEL_NAME} (FP16)...")
+model, tokenizer = load_qwen_model(MODEL_NAME, num_bits=None, auto_download=True)
 print("✓ 模型加载完成")
 
 # ========== 加载数据（固定reference） ==========
@@ -129,17 +129,52 @@ scores_des = df_des['b7_score'].values
 if len(scores_des) != len(scores_orig):
     raise ValueError(f"样本数不匹配: 原始{len(scores_orig)} vs 脱敏{len(scores_des)}")
 
+# ========== NaN 诊断代码（插入到这里）==========
+import numpy as np
+
+print("\n" + "="*50)
+print("Spearman NaN 诊断")
+print("="*50)
+
+# 转换为 numpy 方便计算
+orig_arr = np.array(scores_orig)
+des_arr = np.array(scores_des)
+
+print(f"\n原始文本 (Original):")
+print(f"  min={orig_arr.min():.2f}, max={orig_arr.max():.2f}, mean={orig_arr.mean():.2f}, std={orig_arr.std():.4f}")
+print(f"  唯一值数量: {len(np.unique(orig_arr))}")
+print(f"  前10个值: {orig_arr[:10]}")
+
+print(f"\n脱敏文本 (Desensitized):")
+print(f"  min={des_arr.min():.2f}, max={des_arr.max():.2f}, mean={des_arr.mean():.2f}, std={des_arr.std():.4f}")
+print(f"  唯一值数量: {len(np.unique(des_arr))}")
+print(f"  前10个值: {des_arr[:10]}")
+
+# 检查方差
+if orig_arr.std() < 0.001 or des_arr.std() < 0.001:
+    print(f"\n[诊断结果] 方差为0或接近0")
+    if orig_arr.std() < 0.001:
+        print(f"  -> 原始文本所有分数几乎相同 ({orig_arr[0]:.2f})，导致分母为0")
+    if des_arr.std() < 0.001:
+        print(f"  -> 脱敏文本所有分数几乎相同 ({des_arr[0]:.2f})，导致分母为0")
+    print(f"  Spearman公式: ρ = cov(X,Y) / (σ_X * σ_Y)")
+    print(f"  当 σ_X=0 或 σ_Y=0 时，分母为0，结果为NaN")
+else:
+    print(f"\n[诊断结果] ✓ 两方差均正常，如果仍为NaN可能是其他原因（如样本数<2）")
+print("="*50)
+# ===========================================
+
 rho, p = spearmanr(scores_orig, scores_des)
 print(f"\n一致性检验结果: Spearman ρ = {rho:.4f} (p={p:.4f})")
 
 # ========== 更新汇总表 ==========
 summary_path = os.path.join(ABLATION_DIR, 'consistency_summary.csv')
-new_record = {'method': 'B7', 'spearman_rho': round(rho, 4), 'p_value': round(p, 4)}
+new_record = {'method': 'B7_fp16', 'spearman_rho': round(rho, 4), 'p_value': round(p, 4)}
 
 try:
     if os.path.exists(summary_path):
         df_summary = pd.read_csv(summary_path)
-        df_summary = df_summary[df_summary['method'] != 'B7']
+        df_summary = df_summary[df_summary['method'] != 'B7_fp16']
     else:
         df_summary = pd.DataFrame(columns=['method', 'spearman_rho', 'p_value'])
     
