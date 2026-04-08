@@ -29,6 +29,46 @@ def download_via_modelscope(repo_id, cache_dir):
 
 def load_qwen_model(model_name_or_path, num_bits=4, auto_download=True):
     """
+    加载 Qwen 模型，支持自动精度选择：
+    - 如果 num_bits 指定为 4 或 None，会根据模型大小自动选择：
+        * 4B 模型（含 "4B"） -> FP16 (num_bits=None)
+        * 8B 模型（含 "8B"） -> INT4 (num_bits=4)
+    - 显式传入 num_bits=4 或 num_bits=None 也会触发自动规则，
+      但 None 且无法判断时默认 FP16。
+    """
+    # === 自动精度选择逻辑 ===
+    if num_bits is None:
+        # 默认自动判断：如果模型名称包含 "8B" 则使用 INT4，否则使用 FP16
+        if "8B" in model_name_or_path:
+            effective_bits = 4
+            print("检测到 8B 模型，自动使用 INT4 量化以节省显存")
+        else:
+            effective_bits = None  # FP16
+            print("检测到 4B 或更小模型，使用 FP16 精度")
+    else:
+        effective_bits = num_bits
+
+    # 如果需要 INT4 量化，检查 bitsandbytes 是否安装
+    if effective_bits == 4:
+        try:
+            import bitsandbytes
+            print(f"bitsandbytes 版本: {bitsandbytes.__version__}")
+        except ImportError:
+            raise ImportError(
+                "需要 INT4 量化但 bitsandbytes 未安装。请运行: pip install bitsandbytes"
+            )
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.float16,
+            bnb_4bit_use_double_quant=True
+        )
+    else:
+        bnb_config = None
+
+
+
+    """
     加载 Qwen 模型
     """
     local_path = None

@@ -1,5 +1,5 @@
 """
-B7: Qwen3-4B (INT4) - 最终测试集推理脚本
+B7: Qwen3-4B (FP16) - 最终测试集推理脚本
 策略：读取固定15句参考文本 → 归纳风格 → 为test_full.csv（210句）打分
 """
 
@@ -15,10 +15,13 @@ import torch
 import pandas as pd
 import re
 
-# ---------- 显存限制代码 ----------
-if os.getenv('CUDA_MEMORY_FRACTION'):
-    torch.cuda.set_per_process_memory_fraction(float(os.getenv('CUDA_MEMORY_FRACTION')))
-    print(f"显存限制: {float(os.getenv('CUDA_MEMORY_FRACTION'))*100:.0f}%")
+# ---------- 显存限制代码（硬编码8G） ----------
+import torch
+if torch.cuda.is_available():
+    total_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
+    if total_gb > 8.5:  # 只在 16G 卡上限制
+        torch.cuda.set_per_process_memory_fraction(8.0 / total_gb)
+        print(f"[VRAM Limit] Hard cap 8GB on {total_gb:.1f}GB device")
 # -------------------------------------
 
 # ========== 配置 ==========
