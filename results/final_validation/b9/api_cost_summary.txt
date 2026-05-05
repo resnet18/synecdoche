@@ -1,0 +1,8 @@
+
+Total samples: 210
+Avg score: 6.2443
+Max score: 15.0000
+Min score: 0.0000
+
+Avg latency(ms): 1724.81
+Total tokens: 88658

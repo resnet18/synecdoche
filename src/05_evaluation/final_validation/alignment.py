@@ -5,126 +5,138 @@ from pathlib import Path
 
 base_dir = Path("D:/Projects/synecdoche")
 
-methods = {
-    'B0': base_dir / "results/final_validation/b0/predictions.csv",
-    'B1': base_dir / "results/final_validation/b1/predictions.csv",
-    'B2': base_dir / "results/final_validation/b2/predictions.csv",
-    'B3': base_dir / "results/final_validation/b3/predictions.csv",
-    'B4': base_dir / "results/final_validation/b4/predictions.csv",
-    'B4_pretrained': base_dir / "results/final_validation/b4_pretrained/predictions.csv",
-    'B5': base_dir / "results/final_validation/b5/predictions.csv",
-    'B6': base_dir / "results/final_validation/b6/predictions.csv",
-    'B6_frozen': base_dir / "results/final_validation/b6_frozen/predictions.csv",
-    'B7_fp16': base_dir / "results/final_validation/b7_fp16/predictions.csv",
-    'B7_int4': base_dir / "results/final_validation/b7_int4/predictions.csv",
-    'B8': base_dir / "results/final_validation/b8/predictions.csv",
-    'O1': base_dir / "results/final_validation/o1/predictions.csv",
-    'O2': base_dir / "results/final_validation/o2/predictions.csv",
-    'O2_probe': base_dir / "results/final_validation/o2_probe/predictions.csv",
-    'O3': base_dir / "results/final_validation/o3/predictions.csv",
+# ==================== 统一基线池（人类 + 机器平权） ====================
+all_methods = {
+    # 人类基线
+    'H0': base_dir / "results/final_validation/human/predictions.csv",
+    'H1': base_dir / "results/final_validation/human/predictions_naive.csv",
+    'H2': base_dir / "results/final_validation/human/predictions_expert.csv",
+    'H3': base_dir / "results/final_validation/human/predictions_firstauthor.csv",
+    # 机器方法
+    'B0':  base_dir / "results/final_validation/b0/predictions.csv",
+    'B1':  base_dir / "results/final_validation/b1/predictions.csv",
+    'B2':  base_dir / "results/final_validation/b2/predictions.csv",
+    'B3':  base_dir / "results/final_validation/b3/predictions.csv",
+    'B4':  base_dir / "results/final_validation/b4/predictions.csv",
+    'B4p': base_dir / "results/final_validation/b4_pretrained/predictions.csv",
+    'B5':  base_dir / "results/final_validation/b5/predictions.csv",
+    'B6':  base_dir / "results/final_validation/b6/predictions.csv",
+    'B6f': base_dir / "results/final_validation/b6_frozen/predictions.csv",
+    'B7f': base_dir / "results/final_validation/b7_fp16/predictions.csv",
+    'B7i': base_dir / "results/final_validation/b7_int4/predictions.csv",
+    'B8':  base_dir / "results/final_validation/b8/predictions.csv",
+    'B9':  base_dir / "results/final_validation/b9/predictions.csv",
+    'O1':  base_dir / "results/final_validation/o1/predictions.csv",
+    'O2':  base_dir / "results/final_validation/o2/predictions.csv",
+    'O2p': base_dir / "results/final_validation/o2_probe/predictions.csv",
+    'O3':  base_dir / "results/final_validation/o3/predictions.csv",
 }
 
-human_baselines = {
-    'Players': base_dir / "results/final_validation/human/predictions.csv",
-    'Naive': base_dir / "results/final_validation/human/predictions_naive.csv",
-    'Expert': base_dir / "results/final_validation/human/predictions_expert.csv",
-    'Researcher': base_dir / "results/final_validation/human/predictions_firstauthor.csv",
+# 解码表（输出全称用）
+decode = {
+    'H0': 'Players', 'H1': 'Naive', 'H2': 'Expert', 'H3': 'Researcher',
+    'B0': 'B0', 'B1': 'B1', 'B2': 'B2', 'B3': 'B3', 'B4': 'B4',
+    'B4p': 'B4_pretrained', 'B5': 'B5', 'B6': 'B6', 'B6f': 'B6_frozen',
+    'B7f': 'B7_fp16', 'B7i': 'B7_int4', 'B8': 'B8',
+    'O1': 'O1', 'O2': 'O2', 'O2p': 'O2_probe', 'O3': 'O3'
 }
 
-print("=" * 80)
-print("human-machine alignment (Spearman + MSE + MAE)")
-print("=" * 80)
+# ==================== 函数层 ====================
+def load_scores(path):
+    if not path.exists():
+        return None
+    df = pd.read_csv(path)
+    score_col = next((c for c in df.columns if 'score' in c), None)
+    if score_col is None:
+        raise ValueError(f"{path.name}: 无score列")
+    return df[['text_id', score_col]].rename(columns={score_col: 'score'})
 
-results = []
+# ==================== 加载 ====================
+preds = {}
+for key, path in all_methods.items():
+    df = load_scores(path)
+    if df is not None:
+        preds[key] = df.set_index('text_id')['score'].sort_index()
 
-for method_name, method_path in methods.items():
-    if not method_path.exists():
-        print(f"✗ {method_name}: 文件不存在")
-        continue
-    
-    try:
-        method_df = pd.read_csv(method_path)
-        score_col = [c for c in method_df.columns if 'score' in c][0]
-        method_scores = method_df[['text_id', score_col]].copy()
-        method_scores.columns = ['text_id', 'machine_score']
+if len(preds) < 2:
+    raise SystemExit("有效方法不足2个")
+
+df_wide = pd.DataFrame(preds)
+names = list(df_wide.columns)
+n = len(names)
+
+# ==================== 计算全矩阵 ====================
+metrics = {'Spearman': np.eye(n), 'MSE': np.zeros((n, n)), 
+           'MAE': np.zeros((n, n)), 'Bias': np.zeros((n, n))}
+
+for i, a in enumerate(names):
+    for j, b in enumerate(names):
+        if i == j:
+            metrics['MSE'][i,j] = 0.0
+            metrics['MAE'][i,j] = 0.0
+            metrics['Bias'][i,j] = 0.0
+            continue
         
-    except Exception as e:
-        print(f"✗ {method_name}: 读取失败 - {e}")
-        continue
-    
-    for human_name, human_path in human_baselines.items():
-        try:
-            human_df = pd.read_csv(human_path)
-            merged = pd.merge(method_scores, human_df[['text_id', 'score']], 
-                            on='text_id', suffixes=('_machine', '_human'))
-            
-            if len(merged) == 0:
-                continue
-            
-            # Spearman (排序一致性)
-            rho, pval = spearmanr(merged['machine_score'], merged['score'])
-            
-            # MSE & MAE (绝对偏离度)
-            mse = np.mean((merged['machine_score'] - merged['score']) ** 2)
-            mae = np.mean(np.abs(merged['machine_score'] - merged['score']))
-            
-            # 系统性偏差 (Bias)
-            bias = merged['machine_score'].mean() - merged['score'].mean()
-            
-            results.append({
-                'Method': method_name,
-                'Human_Baseline': human_name,
-                'Spearman_Rho': rho,
-                'P_Value': pval,
-                'MSE': mse,
-                'MAE': mae,
-                'Bias': bias,
-                'N_Samples': len(merged),
-                'Method_Mean': merged['machine_score'].mean(),
-                'Human_Mean': merged['score'].mean()
-            })
-            
-            print(f"✓ {method_name} vs {human_name}: ρ={rho:.3f}, MSE={mse:.2f}, MAE={mae:.2f}, Bias={bias:+.2f}")
-            
-        except Exception as e:
-            print(f"✗ {method_name} vs {human_name}: {e}")
+        valid = df_wide[[a, b]].dropna()
+        if len(valid) == 0:
+            for k in metrics:
+                metrics[k][i,j] = np.nan
+            continue
+        
+        x, y = valid[a], valid[b]
+        metrics['Spearman'][i,j], _ = spearmanr(x, y)
+        metrics['MSE'][i,j] = np.mean((x - y)**2)
+        metrics['MAE'][i,j] = np.mean(np.abs(x - y))
+        metrics['Bias'][i,j] = x.mean() - y.mean()
 
-results_df = pd.DataFrame(results)
+matrices = {k: pd.DataFrame(v, index=names, columns=names) for k, v in metrics.items()}
 
-# 生成透视矩阵
-pivot_rho = results_df.pivot(index='Method', columns='Human_Baseline', values='Spearman_Rho')
-pivot_mse = results_df.pivot(index='Method', columns='Human_Baseline', values='MSE')
-pivot_mae = results_df.pivot(index='Method', columns='Human_Baseline', values='MAE')
-pivot_bias = results_df.pivot(index='Method', columns='Human_Baseline', values='Bias')
+# ==================== 输出 ====================
+print("=" * 80)
+print("ALL-METHOD ALIGNMENT (Humans as H0-H3, Machines as B*/O*)")
+print("=" * 80)
+
+for metric_name, mat in matrices.items():
+    print(f"\n【{metric_name}】")
+    print(mat.round(3 if metric_name == 'Spearman' else 2))
+
+# 长格式配对
+pairs = []
+for i in range(n):
+    for j in range(i+1, n):
+        a, b = names[i], names[j]
+        pairs.append({
+            'A': a, 'B': b,
+            'A_full': decode.get(a, a), 'B_full': decode.get(b, b),
+            'Spearman': metrics['Spearman'][i,j],
+            'MSE': metrics['MSE'][i,j],
+            'MAE': metrics['MAE'][i,j],
+            'Bias': metrics['Bias'][i,j]
+        })
+
+pairs_df = pd.DataFrame(pairs)
 
 print("\n" + "=" * 80)
-print("SPEARMAN ρ (排序一致性)")
+print("TOP 5 最接近 (最小 MSE)")
 print("=" * 80)
-print(pivot_rho.round(3))
+print(pairs_df.nsmallest(5, 'MSE')[['A_full', 'B_full', 'Spearman', 'MSE', 'MAE', 'Bias']].to_string(index=False))
 
 print("\n" + "=" * 80)
-print("MSE (均方误差, 0-100尺度，越小越接近)")
+print("TOP 5 最偏离 (最大 MSE)")
 print("=" * 80)
-print(pivot_mse.round(2))
+print(pairs_df.nlargest(5, 'MSE')[['A_full', 'B_full', 'Spearman', 'MSE', 'MAE', 'Bias']].to_string(index=False))
 
-print("\n" + "=" * 80)
-print("MAE (平均绝对误差, 0-10尺度，越小越接近)")
-print("=" * 80)
-print(pivot_mae.round(2))
+# ==================== 保存 ====================
+out_dir = base_dir / "data/evaluation"
+out_dir.mkdir(parents=True, exist_ok=True)
 
-print("\n" + "=" * 80)
-print("BIAS (系统性偏差, +表示机器偏高，-表示机器偏低)")
-print("=" * 80)
-print(pivot_bias.round(2))
+for metric_name, mat in matrices.items():
+    mat.to_csv(out_dir / f"matrix_all_{metric_name.lower()}.csv")
+pairs_df.to_csv(out_dir / "all_pairs.csv", index=False)
 
-# 保存
-output_dir = base_dir / "data/evaluation"
-results_df.to_csv(output_dir / "alignment_full_metrics.csv", index=False)
-pivot_rho.to_csv(output_dir / "matrix_spearman.csv")
-pivot_mse.to_csv(output_dir / "matrix_mse.csv")
-pivot_mae.to_csv(output_dir / "matrix_mae.csv")
-pivot_bias.to_csv(output_dir / "matrix_bias.csv")
-
-print(f"\n✓ 完整结果保存: {output_dir}")
-print("  - alignment_full_metrics.csv (长格式)")
-print("  - matrix_spearman/mse/mae/bias.csv (透视矩阵)")
+print(f"\n{'='*80}")
+print("OUTPUT")
+print(f"{'='*80}")
+for k in matrices:
+    print(f"  {out_dir / f'matrix_all_{k.lower()}.csv'}")
+print(f"  {out_dir / 'all_pairs.csv'}")
