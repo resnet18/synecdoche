@@ -15,4 +15,4 @@ B7_int4 min=75.00, max=85.00, mean=84.14
 B7_fp16 min=85.00, max=95.00, mean=85.14
 B8 min=50.00, max=85.00, mean=74.71
 B9 min=00.00, max=100.00, mean=74.31
-B10
+B10 min=1.00, max=95.00, mean=55.27

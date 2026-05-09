@@ -26,6 +26,7 @@ all_methods = {
     'B7i': base_dir / "results/final_validation/b7_int4/predictions.csv",
     'B8':  base_dir / "results/final_validation/b8/predictions.csv",
     'B9':  base_dir / "results/final_validation/b9/predictions.csv",
+    'B10': base_dir / "results/final_validation/b10/predictions.csv",
     'O1':  base_dir / "results/final_validation/o1/predictions.csv",
     'O2':  base_dir / "results/final_validation/o2/predictions.csv",
     'O2p': base_dir / "results/final_validation/o2_probe/predictions.csv",
